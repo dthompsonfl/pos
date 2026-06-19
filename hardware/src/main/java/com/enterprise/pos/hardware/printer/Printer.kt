@@ -92,7 +92,7 @@ class ReceiptRenderer(
         center(footer)
         txt("")
         // Kick the drawer: ESC p m t1 t2
-        raw(byteArrayOf(0x1B, 0x70, 0x00, 0x19, 0xFA))
+        raw(byteArrayOf(0x1B, 0x70, 0x00, 0x19, 0xFA.toByte()))
         // Cut paper: GS V 1
         raw(byteArrayOf(0x1D, 0x56, 0x01))
 

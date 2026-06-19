@@ -184,8 +184,6 @@ class PaymentRouter(
     fun capabilities(provider: PaymentProviderId): Set<PaymentCapability> =
         providers[provider]?.capabilities ?: emptySet()
 
-    private var _PaymentRouterConfig$providerConfig: Any? = null
-
     companion object { private const val TAG = "PaymentRouter" }
 }
 

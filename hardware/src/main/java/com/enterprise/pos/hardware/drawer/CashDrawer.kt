@@ -19,7 +19,7 @@ class PrinterKickCashDrawerDriver(
     override suspend fun open(): Result<Unit> = Result.catching {
         if (!printer.isConnected) throw IllegalStateException("Printer not connected")
         // ESC p m t1 t2 — pulse drawer kick on pin 2 for ~250ms.
-        printer.print(byteArrayOf(0x1B, 0x70, 0x00, 0x19, 0xFA))
+        printer.print(byteArrayOf(0x1B, 0x70, 0x00, 0x19, 0xFA.toByte()))
     }
 }
 
