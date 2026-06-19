@@ -31,6 +31,15 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+private val MigrationSource.displayName: String
+    get() = when (this) {
+        MigrationSource.SHOPIFY -> "Shopify"
+        MigrationSource.SQUARE -> "Square"
+        MigrationSource.STRIPE -> "Stripe"
+        MigrationSource.CSV -> "CSV"
+        MigrationSource.OTHER -> "Other"
+    }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MigrationScreen(
@@ -207,7 +216,7 @@ private fun MigrationConfigSheet(
             Spacer(Modifier.height(16.dp))
             Text("What to import", style = MaterialTheme.typography.titleSmall)
             Spacer(Modifier.height(8.dp))
-            MigrationType.values().chunked(2).forEach { row ->
+            MigrationType.entries.chunked(2).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     row.forEach { t ->
                         FilterChip(
