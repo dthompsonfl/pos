@@ -8,6 +8,7 @@ import com.enterprise.pos.core.OrderId
 import com.enterprise.pos.core.OrderLineId
 import com.enterprise.pos.core.Percent
 import com.enterprise.pos.core.ProductId
+import com.enterprise.pos.core.Quantity
 import com.enterprise.pos.core.RegisterId
 import com.enterprise.pos.core.StoreId
 import com.enterprise.pos.core.TableId
@@ -72,7 +73,7 @@ data class OrderLine(
     /** Gross line total before line discount: unitPrice × quantity (fractional OK) + modifiers. */
     val grossTotal: Money
         get() {
-            val base = if (quantity.isPositive()) unitPrice * quantity else Money.ZERO
+            val base = if (quantity.isPositive) unitPrice * quantity else Money.ZERO
             val modifiersTotal = modifiers.fold(Money.ZERO) { acc, m -> acc + m.lineTotal }
             return base + modifiersTotal
         }
