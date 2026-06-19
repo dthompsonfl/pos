@@ -17,7 +17,6 @@ import com.enterprise.pos.domain.model.Product
 import com.enterprise.pos.domain.model.ProductVariant
 import com.enterprise.pos.domain.model.TaxCategory
 import kotlinx.serialization.Serializable
-import java.math.RoundingMode
 
 /**
  * Pure-functional cart operations. No side effects, no I/O.
@@ -134,7 +133,7 @@ class CartEngine {
             DiscountType.PERCENTAGE -> discount.percent.of(line.grossTotal).cappedAt(line.lineTotal)
             DiscountType.BOGO -> {
                 // BOGO: every second unit of the same item is free.
-                val freeQty = line.quantity.value.divide(Quantity.of(2).value, 0, RoundingMode.DOWN).toInt()
+                val freeQty = line.quantity.wholeUnits / 2
                 line.unitPrice.times(freeQty)
             }
         }
