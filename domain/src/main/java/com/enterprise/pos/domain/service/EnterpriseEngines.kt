@@ -10,6 +10,7 @@ import com.enterprise.pos.domain.model.OrderLineType
 import com.enterprise.pos.domain.model.Promotion
 import com.enterprise.pos.domain.model.PromotionScope
 import com.enterprise.pos.domain.model.PromotionType
+import com.enterprise.pos.domain.model.TipSuggestion
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalTime
@@ -208,16 +209,16 @@ class AbcAnalysisEngine {
  * Suggests tip amounts based on configurable suggestions.
  */
 class TipSuggestionsEngine {
-    fun compute(subtotal: Money, suggestions: List<com.enterprise.pos.payment.model.TipSuggestion>): List<Pair<String, Money>> {
-        return suggestions.mapNotNull { s ->
+    fun compute(subtotal: Money, suggestions: List<TipSuggestion>): List<Pair<String, Money>> {
+        return suggestions.map { s ->
             when (s) {
-                is com.enterprise.pos.payment.model.TipSuggestion.Percentage -> {
-                    val amount = subtotal * (java.math.BigDecimal.valueOf(s.percent.toLong()).divide(java.math.BigDecimal(100)))
+                is TipSuggestion.Percentage -> {
+                    val amount = Percent.of(s.percent.toDouble()).of(subtotal)
                     "${s.percent}%" to amount
                 }
-                is com.enterprise.pos.payment.model.TipSuggestion.Fixed -> "Fixed" to s.amount
-                com.enterprise.pos.payment.model.TipSuggestion.Custom -> "Custom" to Money.ZERO
-                com.enterprise.pos.payment.model.TipSuggestion.NoTip -> "No Tip" to Money.ZERO
+                is TipSuggestion.Fixed -> "Fixed" to s.amount
+                TipSuggestion.Custom -> "Custom" to Money.ZERO
+                TipSuggestion.NoTip -> "No Tip" to Money.ZERO
             }
         }
     }
