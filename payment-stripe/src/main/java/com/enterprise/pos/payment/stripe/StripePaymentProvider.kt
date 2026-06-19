@@ -31,7 +31,6 @@ import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
-import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
@@ -117,7 +116,7 @@ class StripePaymentProvider(
         if (config.environment == ProviderEnvironment.SANDBOX && simulate) {
             logger.i(TAG, "Stripe initialized in SIMULATED mode (debug only)")
         } else {
-            require(config.locationId?.isNotBlank() == true) {
+            val locationId = requireNotNull(config.locationId?.takeIf { it.isNotBlank() }) {
                 "Stripe locationId required (set stripeLocationId in gradle.properties)"
             }
             require(backendBaseUrl.isNotBlank()) {
@@ -125,7 +124,7 @@ class StripePaymentProvider(
             }
             // Real flow: fetch a connection token from backend
             if (!simulate) {
-                val token = fetchConnectionToken(config.locationId)
+                val token = fetchConnectionToken(locationId)
                 sdkBridge?.initialize(token)
                 logger.i(TAG, "Stripe initialized with real connection token")
             }
@@ -212,12 +211,15 @@ class StripePaymentProvider(
             return simulateCollect(handle, events)
         }
         // Real flow:
-        // 1. sdkBridge.collectPaymentMethod(handle.secret, eventListener) -> updated PaymentIntent
+        // 1. sdkBridge.collectPaymentMethod(clientSecret, eventListener) -> updated PaymentIntent
         // 2. POST /v1/payments/{id}/capture to backend (with optional tip)
         // 3. Backend captures, returns captured PaymentIntent
         // 4. Construct PaymentResult from captured intent
         return try {
-            val collected = sdkBridge?.collectPaymentMethod(handle.secret, events)
+            val clientSecret = requireNotNull(handle.secret) {
+                "Stripe payment intent client secret missing"
+            }
+            sdkBridge?.collectPaymentMethod(clientSecret, events)
                 ?: return Result.failure(AppError.Payment(
                     PaymentErrorCode.UNKNOWN,
                     "Stripe SDK bridge not available"
@@ -353,7 +355,7 @@ class StripePaymentProvider(
         }
     }
 
-    @Serializable private data class ConnectionTokenHttpRequest(val locationId: String?)
+    @Serializable private data class ConnectionTokenHttpRequest(val locationId: String)
     @Serializable private data class ConnectionTokenHttpResponse(val secret: String)
     @Serializable private data class CreatePaymentIntentHttpRequest(
         val amountMinor: Long, val currency: String, val description: String?, val metadata: Map<String, String>
