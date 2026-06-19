@@ -84,6 +84,18 @@ android {
         compose = true
         buildConfig = true
     }
+    testOptions {
+        managedDevices {
+            devices {
+                create<com.android.build.api.dsl.ManagedVirtualDevice>("tablet") {
+                    device = "Pixel Tablet"
+                    apiLevel = 34
+                    systemImageSource = "google"
+                }
+            }
+        }
+    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
