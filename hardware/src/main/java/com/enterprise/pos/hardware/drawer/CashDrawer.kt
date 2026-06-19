@@ -5,7 +5,7 @@ import com.enterprise.pos.core.AppError
 import com.enterprise.pos.core.Result
 import com.enterprise.pos.hardware.printer.PrinterDriver
 
-/** Cash drawer controller. Real drawers are kicked via ESC p m t1 t2 to a connected printer,
+/** Cash drawer controller. Real drawers are kicked via ESC pm t1 t2 to a connected printer,
  *  or via a dedicated USB relay. We provide both paths. */
 interface CashDrawerDriver {
     suspend fun open(): Result<Unit>
@@ -18,8 +18,8 @@ class PrinterKickCashDrawerDriver(
     override val displayName: String = "Via ${printer.displayName}"
     override suspend fun open(): Result<Unit> = Result.catching {
         if (!printer.isConnected) throw IllegalStateException("Printer not connected")
-        // ESC p m t1 t2 — pulse drawer kick on pin 2 for ~250ms.
-        printer.print(byteArrayOf(0x1B, 0x70, 0x00, 0x19, 0xFA.toByte()))
+        // ESC pm t1 t2 — pulse drawer kick on pin 2 for ~250ms.
+        printer.print(byteArrayOf(0x1B.toByte(), 0x70.toByte(), 0x00.toByte(), 0x19.toByte(), 0xFA.toByte()))
     }
 }
 

@@ -28,7 +28,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
 
 /**
@@ -184,7 +183,9 @@ class PaymentRouter(
     fun capabilities(provider: PaymentProviderId): Set<PaymentCapability> =
         providers[provider]?.capabilities ?: emptySet()
 
-    companion object { private const val TAG = "PaymentRouter" }
+    companion object {
+        private const val TAG = "PaymentRouter"
+    }
 }
 
 data class RoutedPaymentIntent(

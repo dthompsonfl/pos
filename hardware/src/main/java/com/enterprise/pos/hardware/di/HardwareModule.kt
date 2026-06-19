@@ -1,7 +1,5 @@
 package com.enterprise.pos.hardware.di
 
-import com.enterprise.pos.core.Logger
-import com.enterprise.pos.core.NoopLogger
 import com.enterprise.pos.hardware.drawer.CashDrawerManager
 import com.enterprise.pos.hardware.drawer.NoopSecondaryDisplay
 import com.enterprise.pos.hardware.drawer.SecondaryDisplayController

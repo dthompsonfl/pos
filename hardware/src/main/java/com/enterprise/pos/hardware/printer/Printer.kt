@@ -1,6 +1,5 @@
 package com.enterprise.pos.hardware.printer
 
-import com.enterprise.pos.core.Money
 import com.enterprise.pos.core.Result
 import com.enterprise.pos.domain.model.Order
 import com.enterprise.pos.domain.model.OrderLineType
@@ -29,13 +28,13 @@ class ReceiptRenderer(
         }
 
         // ESC @ — initialize
-        raw(byteArrayOf(0x1B, 0x40))
+        raw(byteArrayOf(0x1B.toByte(), 0x40.toByte()))
         // ESC a 1 — center
-        raw(byteArrayOf(0x1B, 0x61, 0x01))
+        raw(byteArrayOf(0x1B.toByte(), 0x61.toByte(), 0x01.toByte()))
         txt(storeName)
         txt(storeAddress)
         txt(storePhone)
-        raw(byteArrayOf(0x1B, 0x61, 0x00)) // left
+        raw(byteArrayOf(0x1B.toByte(), 0x61.toByte(), 0x00.toByte())) // left
         line()
 
         val date = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date(order.createdAt))
@@ -87,14 +86,14 @@ class ReceiptRenderer(
             line()
         }
 
-        raw(byteArrayOf(0x1B, 0x61, 0x01)) // center
+        raw(byteArrayOf(0x1B.toByte(), 0x61.toByte(), 0x01.toByte())) // center
         txt("")
         center(footer)
         txt("")
-        // Kick the drawer: ESC p m t1 t2
-        raw(byteArrayOf(0x1B, 0x70, 0x00, 0x19, 0xFA.toByte()))
+        // Kick the drawer: ESC pm t1 t2
+        raw(byteArrayOf(0x1B.toByte(), 0x70.toByte(), 0x00.toByte(), 0x19.toByte(), 0xFA.toByte()))
         // Cut paper: GS V 1
-        raw(byteArrayOf(0x1D, 0x56, 0x01))
+        raw(byteArrayOf(0x1D.toByte(), 0x56.toByte(), 0x01.toByte()))
 
         return out.toByteArray()
     }
@@ -105,10 +104,10 @@ class ReceiptRenderer(
         fun txt(s: String) { s.toByteArray(Charsets.US_ASCII).forEach { out.add(it) }; out.add(0x0A.toByte()) }
         fun raw(bytes: ByteArray) { bytes.forEach { out.add(it) } }
 
-        raw(byteArrayOf(0x1B, 0x40))
-        raw(byteArrayOf(0x1B, 0x21, 0x30.toByte())) // double height + width
+        raw(byteArrayOf(0x1B.toByte(), 0x40.toByte()))
+        raw(byteArrayOf(0x1B.toByte(), 0x21.toByte(), 0x30.toByte())) // double height + width
         txt("ORDER ${order.id.value.takeLast(6).uppercase()}")
-        raw(byteArrayOf(0x1B, 0x21, 0x00)) // reset
+        raw(byteArrayOf(0x1B.toByte(), 0x21.toByte(), 0x00.toByte())) // reset
         txt("Table: ${order.tableName ?: order.diningMode.name}")
         txt("Guests: ${order.guestCount}")
         txt(SimpleDateFormat("HH:mm", Locale.US).format(Date(order.createdAt)))
@@ -118,7 +117,7 @@ class ReceiptRenderer(
             line0.notes?.takeIf { it.isNotBlank() }?.let { txt("    >> $it") }
         }
         txt("".padEnd(42, '-'))
-        raw(byteArrayOf(0x1D, 0x56, 0x01)) // cut
+        raw(byteArrayOf(0x1D.toByte(), 0x56.toByte(), 0x01.toByte())) // cut
         return out.toByteArray()
     }
 }
