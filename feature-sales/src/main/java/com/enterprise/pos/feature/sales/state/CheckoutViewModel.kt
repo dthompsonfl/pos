@@ -248,7 +248,7 @@ class CheckoutViewModel @Inject constructor(
             }
             is Result.Success -> {
                 _state.value = _state.value.copy(routedIntent = init.value)
-                val r = router.collectPayment(init.value) { event ->
+                val r = router.collectPayment((init as Result.Success).value) { event ->
                     _state.value = _state.value.copy(currentEvent = event)
                 }
                 when (r) {
@@ -276,7 +276,7 @@ class CheckoutViewModel @Inject constructor(
             _events.trySend(CheckoutUiEvent.Error(init.error.message))
             return
         }
-        val r = router.collectPayment(init.value) { event ->
+        val r = router.collectPayment((init as Result.Success).value) { event ->
             _state.value = _state.value.copy(currentEvent = event)
         }
         when (r) {

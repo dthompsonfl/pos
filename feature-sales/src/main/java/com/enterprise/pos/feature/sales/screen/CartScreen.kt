@@ -98,14 +98,14 @@ fun CartScreen(
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     TotalRow("Subtotal", bd.subtotal.format())
-                    if (!bd.discounts.isZero()) TotalRow("Discounts", "-${bd.discounts.format()}")
+                    if (!bd.totalDiscount.isZero()) TotalRow("Discounts", "-${bd.totalDiscount.format()}")
                     if (!bd.taxes.isZero()) TotalRow("Tax", bd.taxes.format())
                     if (!bd.tip.isZero()) TotalRow("Tip", bd.tip.format())
                     Spacer(Modifier.height(8.dp))
                     Row {
                         Text("Total", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.weight(1f))
-                        Text(bd.total.format(), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                        Text(bd.grandTotal.format(), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -138,7 +138,7 @@ fun CartScreen(
             modifier = Modifier.fillMaxWidth().height(56.dp)
         ) {
             if (state.isFinalizing) CircularProgressIndicator(strokeWidth = 2.dp)
-            else { Icon(Icons.Filled.Payment, null); Spacer(Modifier.width(8.dp)); Text("Charge ${state.breakdown?.total?.format() ?: ""}", style = MaterialTheme.typography.titleLarge) }
+            else { Icon(Icons.Filled.Payment, null); Spacer(Modifier.width(8.dp)); Text("Charge ${state.breakdown?.grandTotal?.format() ?: ""}", style = MaterialTheme.typography.titleLarge) }
         }
 
         state.error?.let { err ->
@@ -244,7 +244,7 @@ private fun TipSheet(subtotal: Money, onDismiss: () -> Unit, onApply: (Money) ->
             Text("Add Tip", style = MaterialTheme.typography.headlineSmall)
             Spacer(Modifier.height(16.dp))
             listOf(15, 18, 20, 25).forEach { p ->
-                val amount = subtotal * (java.math.BigDecimal.valueOf(p).divide(java.math.BigDecimal(100)))
+                val amount = subtotal * java.math.BigDecimal.valueOf(p.toLong(), 2)
                 ListItem(
                     headlineContent = { Text("$p%") },
                     trailingContent = { Text(amount.format(), style = MaterialTheme.typography.titleMedium) },
