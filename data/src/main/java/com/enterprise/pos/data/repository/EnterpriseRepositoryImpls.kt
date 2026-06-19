@@ -92,6 +92,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
+import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -623,7 +624,7 @@ class AnalyticsRepositoryImpl(
         val lowStockCount = 0 // would query inventory
         val pendingSyncCount = syncDao.observeCount().first()
         val alerts = mutableListOf<DashboardAlert>()
-        if (todaySales < yesterdaySales * 0.8) {
+        if (todaySales < yesterdaySales * BigDecimal.valueOf(0.8)) {
             alerts.add(DashboardAlert(AlertSeverity.WARNING, AlertCategory.REVENUE, "Sales Drop", "Today's sales are ${(1 - todaySales.minorUnits.toDouble() / yesterdaySales.minorUnits.coerceAtLeast(1)) * 100}% below yesterday", null, now))
         }
         DashboardSnapshot(

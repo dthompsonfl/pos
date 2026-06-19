@@ -14,7 +14,7 @@ data class CategoryEntity(
     val color: Long
 )
 
-@Entity(tableName = "products", indices = [Index("categoryId"), Index("barcode", unique = false)])
+@Entity(tableName = "products", indices = [Index("categoryId")])
 data class ProductEntity(
     @PrimaryKey val id: String,
     val name: String,

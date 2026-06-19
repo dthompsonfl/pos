@@ -379,7 +379,7 @@ class CustomerRepositoryImpl(
         dao.observe(query).map { list -> list.map { it.toDomain() } }
 
     override fun observeCustomer(id: CustomerId): Flow<com.enterprise.pos.domain.model.Customer?> =
-        dao.observe(id.value).map { it?.toDomain() }
+        dao.observeById(id.value).map { it?.toDomain() }
 
     override suspend fun get(id: CustomerId): Result<com.enterprise.pos.domain.model.Customer?> = Result.catching {
         dao.get(id.value)?.toDomain()

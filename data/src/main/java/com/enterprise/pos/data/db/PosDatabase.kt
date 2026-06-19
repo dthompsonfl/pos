@@ -47,7 +47,8 @@ import com.enterprise.pos.data.db.entity.SettingEntity
 import com.enterprise.pos.data.db.entity.ShiftEntity
 import com.enterprise.pos.data.db.entity.StoreEntity
 import com.enterprise.pos.data.db.entity.SyncQueueEntity
-import com.enterprise.pos.data.db.entity.SyncOutboxEntity
+import com.enterprise.pos.data.sync.SyncOutboxDao
+import com.enterprise.pos.data.sync.SyncOutboxEntity
 import com.enterprise.pos.data.db.entity.TableEntity
 import com.enterprise.pos.data.db.entity.TaxLineEntity
 import com.enterprise.pos.data.db.entity.TipLogEntity
@@ -112,7 +113,7 @@ abstract class PosDatabase : RoomDatabase() {
     abstract fun migrationJobDao(): MigrationJobDao
     abstract fun settingDao(): SettingDao
     abstract fun tipLogDao(): TipLogDao
-    abstract fun syncOutboxDao(): com.enterprise.pos.data.sync.SyncOutboxDao
+    abstract fun syncOutboxDao(): SyncOutboxDao
 
     companion object {
         const val DB_NAME = "enterprise-pos.db"

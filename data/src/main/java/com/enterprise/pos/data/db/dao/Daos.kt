@@ -156,7 +156,7 @@ interface CustomerDao {
     fun observe(query: String): Flow<List<CustomerEntity>>
 
     @Query("SELECT * FROM customers WHERE id = :id")
-    fun observe(id: String): Flow<CustomerEntity?>
+    fun observeById(id: String): Flow<CustomerEntity?>
 
     @Query("SELECT * FROM customers WHERE id = :id")
     suspend fun get(id: String): CustomerEntity?

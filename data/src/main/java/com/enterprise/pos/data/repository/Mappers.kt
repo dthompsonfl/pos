@@ -19,6 +19,7 @@ import com.enterprise.pos.data.db.entity.InventoryEntity
 import com.enterprise.pos.data.db.entity.OrderEntity
 import com.enterprise.pos.data.db.entity.OrderLineEntity
 import com.enterprise.pos.data.db.entity.PaymentEntity
+import com.enterprise.pos.data.db.entity.ProductEntity
 import com.enterprise.pos.data.db.entity.RegisterEntity
 import com.enterprise.pos.data.db.entity.StoreEntity
 import com.enterprise.pos.data.db.entity.TableEntity
