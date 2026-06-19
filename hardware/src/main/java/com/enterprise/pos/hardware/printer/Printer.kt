@@ -3,7 +3,6 @@ package com.enterprise.pos.hardware.printer
 import com.enterprise.pos.core.Result
 import com.enterprise.pos.domain.model.Order
 import com.enterprise.pos.domain.model.OrderLineType
-import com.enterprise.pos.domain.model.OrderStatus
 import com.enterprise.pos.domain.model.Payment
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -132,6 +131,7 @@ interface PrinterDriver {
 }
 
 /** USB printer driver — uses Android USB Host API. */
+@Suppress("unused")
 class UsbPrinterDriver(
     override val displayName: String,
     private val usbDeviceId: String
@@ -140,6 +140,7 @@ class UsbPrinterDriver(
         private set
 
     override suspend fun connect(): Result<Unit> = Result.catching {
+        require(usbDeviceId.isNotBlank()) { "USB device id is required" }
         // Real: UsbManager.openDevice(device) → claim bulk OUT endpoint.
         isConnected = true
     }
@@ -156,6 +157,7 @@ class UsbPrinterDriver(
 }
 
 /** Network printer driver — sends raw bytes over TCP port 9100. */
+@Suppress("unused")
 class NetworkPrinterDriver(
     override val displayName: String,
     private val host: String,
@@ -165,6 +167,8 @@ class NetworkPrinterDriver(
         private set
 
     override suspend fun connect(): Result<Unit> = Result.catching {
+        require(host.isNotBlank()) { "Printer host is required" }
+        require(port in 1..65535) { "Printer port must be in 1..65535" }
         // Real: java.net.Socket(host, port)
         isConnected = true
     }
@@ -180,6 +184,7 @@ class NetworkPrinterDriver(
 }
 
 /** Bluetooth printer driver — uses RFCOMM SPP. */
+@Suppress("unused")
 class BluetoothPrinterDriver(
     override val displayName: String,
     private val macAddress: String
@@ -188,6 +193,7 @@ class BluetoothPrinterDriver(
         private set
 
     override suspend fun connect(): Result<Unit> = Result.catching {
+        require(macAddress.isNotBlank()) { "Bluetooth printer MAC address is required" }
         // Real: BluetoothSocket.createRfcommSocketToServiceRecord(SPP_UUID); connect()
         isConnected = true
     }
@@ -205,9 +211,13 @@ class BluetoothPrinterDriver(
 class PrinterManager(
     private val drivers: MutableList<PrinterDriver> = mutableListOf()
 ) {
+    @Suppress("unused")
     fun register(driver: PrinterDriver) { drivers.add(driver) }
+
+    @Suppress("unused")
     fun connectedDrivers(): List<PrinterDriver> = drivers.filter { it.isConnected }
 
+    @Suppress("unused")
     suspend fun printReceipt(renderer: ReceiptRenderer, order: Order, payments: List<Payment>): Result<Unit> {
         if (drivers.isEmpty()) return Result.success(Unit) // No-op when no printer registered.
         val data = renderer.render(order, payments)
@@ -220,9 +230,10 @@ class PrinterManager(
         return lastError ?: Result.failure(com.enterprise.pos.core.AppError.Hardware("Printer", "No connected printers"))
     }
 
+    @Suppress("unused")
     suspend fun printKitchenTicket(renderer: ReceiptRenderer, order: Order): Result<Unit> {
         val data = renderer.renderKitchenTicket(order)
-        return drivers.filter { it.isConnected }.firstOrNull()?.print(data)
+        return drivers.firstOrNull { it.isConnected }?.print(data)
             ?: Result.success(Unit)
     }
 }

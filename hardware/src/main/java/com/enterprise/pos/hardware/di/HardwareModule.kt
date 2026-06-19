@@ -1,3 +1,5 @@
+@file:Suppress("unused")
+
 package com.enterprise.pos.hardware.di
 
 import com.enterprise.pos.hardware.drawer.CashDrawerManager
