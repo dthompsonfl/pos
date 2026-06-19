@@ -149,6 +149,17 @@ fun FloorScreen(
 
 private enum class StartOrderMode { DINE_IN_HOST, DINE_IN_SELF, TO_GO, DELIVERY, RETAIL }
 
+private val TableStatus.floorColor: Color
+    get() = when (this) {
+        TableStatus.AVAILABLE -> Color(0xFF4CAF50)
+        TableStatus.SEATED -> Color(0xFF2196F3)
+        TableStatus.ORDERED -> Color(0xFFFF9800)
+        TableStatus.DINING -> Color(0xFF9C27B0)
+        TableStatus.BILL_REQUESTED -> Color(0xFFF44336)
+        TableStatus.CLEANING -> Color(0xFF607D8B)
+        TableStatus.RESERVED -> Color(0xFF00BCD4)
+    }
+
 @Composable
 private fun DiningModeGrid(onPick: (StartOrderMode) -> Unit) {
     val items = listOf(
@@ -190,7 +201,7 @@ private fun DiningModeGrid(onPick: (StartOrderMode) -> Unit) {
 
 @Composable
 private fun TableCard(table: RestaurantTable, onClick: () -> Unit) {
-    val cardColor = Color(table.statusColor)
+    val cardColor = table.status.floorColor
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -214,7 +225,7 @@ private fun TableCard(table: RestaurantTable, onClick: () -> Unit) {
                 TableStatus.CLEANING -> "Cleaning"
                 TableStatus.RESERVED -> "Reserved"
             }
-            Text(statusText, style = MaterialTheme.typography.bodyMedium, color = Color(cardColor))
+            Text(statusText, style = MaterialTheme.typography.bodyMedium, color = cardColor)
             Spacer(Modifier.height(6.dp))
             Surface(
                 shape = RoundedCornerShape(8.dp),
