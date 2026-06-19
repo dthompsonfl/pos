@@ -1,0 +1,27 @@
+# Copy this file to local.properties and fill in your values.
+
+# Path to your Android SDK installation.
+# CI sets this automatically; for local dev use your SDK path.
+sdk.dir=/path/to/Android/Sdk
+
+# Stripe Terminal location ID (NOT a secret — published identifier from your Stripe Dashboard)
+# Get from: https://dashboard.stripe.com/terminal/locations
+stripeLocationId=
+
+# Square Application ID (NOT a secret — published identifier)
+# Get from: https://developer.squareup.com/apps
+squareApplicationId=
+
+# Shopify shop domain (NOT a secret — public shop URL)
+shopifyShopDomain=your-store.myshopify.com
+
+# Backend base URL — your POS backend that issues Stripe connection tokens,
+# captures payments, processes refunds, and accepts sync outbox events.
+# This backend holds ALL secrets (Stripe secret key, Shopify access token, Square access token).
+backendBaseUrl=https://pos.example.com
+
+# Release signing is configured via ENVIRONMENT VARIABLES only, never in this file:
+#   POS_RELEASE_KEYSTORE_PATH
+#   POS_RELEASE_KEYSTORE_PASSWORD
+#   POS_RELEASE_KEY_ALIAS
+#   POS_RELEASE_KEY_PASSWORD

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- POS data contains payment records, employee PIN hashes, audit logs, and customer PII.
+     Backup is DISABLED entirely (android:allowBackup="false" in manifest).
+     This file is a defense-in-depth: even if allowBackup is somehow enabled, no data is backed up. -->
+<full-backup-content>
+    <exclude domain="root" />
+    <exclude domain="database" />
+    <exclude domain="sharedpref" />
+    <exclude domain="external" />
+    <exclude domain="file" />
+</full-backup-content>
