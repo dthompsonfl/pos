@@ -39,6 +39,7 @@ import java.util.Locale
 import kotlin.math.max
 
 /** The home screen — real-time executive dashboard. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
     storeId: StoreId,
