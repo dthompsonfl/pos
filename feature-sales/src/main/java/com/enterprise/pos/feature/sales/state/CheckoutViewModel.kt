@@ -12,6 +12,7 @@ import com.enterprise.pos.core.PaymentErrorCode
 import com.enterprise.pos.core.PaymentId
 import com.enterprise.pos.core.Result
 import com.enterprise.pos.domain.model.OrderStatus
+import com.enterprise.pos.domain.model.Payment as DomainPayment
 import com.enterprise.pos.domain.model.TenderSplit
 import com.enterprise.pos.domain.repository.GiftCardRepository
 import com.enterprise.pos.domain.repository.OrderRepository
@@ -232,7 +233,7 @@ class CheckoutViewModel @Inject constructor(
         // Cash has a special path that requires tendered amount.
         if (requested == PaymentProviderId.CASH) {
             if (!canProcessCash()) {
-                _state.value = _state.value.copy(isProcessing = false, error = "Enter cash tendered ≥ amount due")
+                _state.value = _state.value.copy(isProcessing = false, error = "Enter cash tendered >= amount due")
                 return
             }
             processCashPayment(orderId, employeeId)
@@ -362,7 +363,7 @@ class CheckoutViewModel @Inject constructor(
     private fun completeOrderWithPayment(orderId: OrderId, employeeId: EmployeeId, payment: PaymentResult) {
         viewModelScope.launch {
             // 1. Persist the payment via the order repository's transactional close.
-            orders.markPaid(orderId, payment, employeeId)
+            orders.markPaid(orderId, payment.toDomainPayment(orderId), employeeId)
                 .onSuccess { closedOrder ->
                     _state.value = _state.value.copy(
                         isProcessing = false,
@@ -373,7 +374,7 @@ class CheckoutViewModel @Inject constructor(
                     _events.trySend(CheckoutUiEvent.PaymentCompleted(payment.provider, payment.amount))
                 }
                 .onFailure { err ->
-                    logger.e(TAG, "Failed to mark order paid", err)
+                    logger.e(TAG, "Failed to mark order paid: ${err.message}")
                     _state.value = _state.value.copy(isProcessing = false, error = err.message)
                     _events.trySend(CheckoutUiEvent.Error(err.message ?: "Failed to complete order"))
                 }
@@ -413,3 +414,17 @@ class CheckoutViewModel @Inject constructor(
 
     companion object { private const val TAG = "CheckoutViewModel" }
 }
+
+private fun PaymentResult.toDomainPayment(orderId: OrderId): DomainPayment = DomainPayment(
+    id = id,
+    orderId = orderId,
+    provider = provider.name,
+    providerTransactionId = providerTransactionId,
+    amount = amount,
+    currency = currency,
+    cardBrand = cardBrand,
+    last4 = last4,
+    entryMode = entryMode?.name,
+    receiptUrl = receiptUrl,
+    capturedAt = capturedAt
+)
