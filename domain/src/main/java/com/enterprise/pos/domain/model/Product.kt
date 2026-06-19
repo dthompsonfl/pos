@@ -1,9 +1,9 @@
 package com.enterprise.pos.domain.model
 
 import com.enterprise.pos.core.CategoryId
-import com.enterprise.pos.core.Id
 import com.enterprise.pos.core.Money
 import com.enterprise.pos.core.ProductId
+import com.enterprise.pos.core.StoreId
 import com.enterprise.pos.core.VariantId
 import kotlinx.serialization.Serializable
 
@@ -70,7 +70,7 @@ data class Product(
 @Serializable
 data class InventorySnapshot(
     val variantId: VariantId,
-    val storeId: Id<out Any>,
+    val storeId: StoreId,
     val onHand: Int,
     val committed: Int = 0,
     val available: Int = onHand - committed,
