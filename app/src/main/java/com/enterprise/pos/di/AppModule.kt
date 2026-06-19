@@ -45,6 +45,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
+import kotlin.jvm.JvmSuppressWildcards
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -54,7 +55,7 @@ object AppModule {
     fun provideTaxEngine(): TaxEngine = DefaultTaxEngine(TaxConfiguration.RESTAURANT)
 
     @Provides @Singleton
-    fun providePaymentProviders(): Map<PaymentProviderId, PaymentProvider> {
+    fun providePaymentProviders(): Map<PaymentProviderId, @JvmSuppressWildcards PaymentProvider> {
         val providers = mutableMapOf<PaymentProviderId, PaymentProvider>()
 
         // Stripe: real backend-driven flow. Simulated mode only in debug builds.
@@ -105,7 +106,7 @@ object AppModule {
 
     @Provides @Singleton
     fun providePaymentRouter(
-        providers: Map<PaymentProviderId, PaymentProvider>,
+        providers: Map<PaymentProviderId, @JvmSuppressWildcards PaymentProvider>,
         policy: PaymentRoutingPolicy,
         config: PaymentRouterConfig
     ): PaymentRouter = PaymentRouter(providers, policy, config)

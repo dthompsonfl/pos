@@ -125,7 +125,8 @@ class DatabaseSeeder(
         data class Item(
             val name: String, val catId: String, val price: Double, val cost: Double? = null,
             val tax: TaxCategory = TaxCategory.PREPARED_FOOD, val kitchen: String? = null,
-            val prepTime: Int = 0, val barcode: String? = null, val desc: String = ""
+            val prepTime: Int = 0, val barcode: String? = null, val desc: String = "",
+            val ageRestriction: Boolean = false
         )
         val items = listOf(
             Item("Calamari", "cat-app", 12.0, 5.50, kitchen = "fryer", prepTime = 8, desc = "Crispy fried squid with marinara"),

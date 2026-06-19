@@ -51,14 +51,16 @@ object StripeService {
         metadata: Map<String, String>,
         stripeAccount: String? = null
     ): PaymentIntent {
-        val params = PaymentIntentCreateParams.builder()
+        val paramsBuilder = PaymentIntentCreateParams.builder()
             .setAmount(amountMinor)
             .setCurrency(currency.lowercase())
-            .setPaymentMethodTypes(listOf("card_present"))
+            .addPaymentMethodType("card_present")
             .setCaptureMethod(PaymentIntentCreateParams.CaptureMethod.MANUAL)
-            .apply { description?.let { setDescription(it) } }
-            .putAllMetadata(metadata)
-            .build()
+        
+        description?.let { paramsBuilder.setDescription(it) }
+        paramsBuilder.putAllMetadata(metadata)
+        
+        val params = paramsBuilder.build()
         val options = RequestOptions.builder()
             .setIdempotencyKey(UUID.randomUUID().toString())
             .apply { stripeAccount?.let { setStripeAccount(it) } }
@@ -73,7 +75,7 @@ object StripeService {
         stripeAccount: String? = null
     ): PaymentIntent {
         val paramsBuilder = PaymentIntentCaptureParams.builder()
-        tipAmount?.let { paramsBuilder.setAmountToCapture(it) }
+        tipAmountMinor?.let { paramsBuilder.setAmountToCapture(it) }
         val params = paramsBuilder.build()
         val options = RequestOptions.builder()
             .setIdempotencyKey(UUID.randomUUID().toString())
