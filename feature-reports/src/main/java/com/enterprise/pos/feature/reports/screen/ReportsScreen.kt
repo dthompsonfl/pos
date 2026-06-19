@@ -47,7 +47,7 @@ fun ReportsScreen(storeId: StoreId, viewModel: ReportsViewModel = hiltViewModel(
                         Icon(Icons.Filled.PictureAsPdf, "Export PDF")
                     }
                     IconButton(onClick = { /* export to CSV */ }) {
-                        Icon(Icons.Filled.Csv, "Export CSV")
+                        Icon(Icons.Filled.FileDownload, "Export CSV")
                     }
                 }
             )
