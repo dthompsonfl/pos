@@ -6,7 +6,6 @@ import com.enterprise.pos.core.CategoryId
 import com.enterprise.pos.core.Logger
 import com.enterprise.pos.core.NoopLogger
 import com.enterprise.pos.core.ProductId
-import com.enterprise.pos.core.StoreId
 import com.enterprise.pos.domain.model.Category
 import com.enterprise.pos.domain.model.Product
 import com.enterprise.pos.domain.repository.CatalogRepository
@@ -24,13 +23,13 @@ data class CatalogState(
     val selectedCategory: CategoryId? = null,
     val products: List<Product> = emptyList(),
     val query: String = "",
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
 )
 
 @HiltViewModel
 class CatalogViewModel @Inject constructor(
     private val catalog: CatalogRepository,
-    private val logger: Logger = NoopLogger
+    @Suppress("unused") private val logger: Logger = NoopLogger
 ) : ViewModel() {
     private val _state = MutableStateFlow(CatalogState(isLoading = true))
     val state: StateFlow<CatalogState> = _state.asStateFlow()
@@ -40,7 +39,7 @@ class CatalogViewModel @Inject constructor(
             .onEach { cats ->
                 val first = cats.firstOrNull()?.id
                 _state.value = _state.value.copy(categories = cats, selectedCategory = _state.value.selectedCategory ?: first)
-                if (first != null && _state.value.selectedCategory == null) selectCategory(first)
+                if ((first != null) && (_state.value.selectedCategory == null)) selectCategory(first)
             }
             .launchIn(viewModelScope)
     }
@@ -65,6 +64,7 @@ class CatalogViewModel @Inject constructor(
         }
     }
 
+    @Suppress("unused")
     fun setAvailable(productId: ProductId, available: Boolean) {
         viewModelScope.launch { catalog.setAvailable(productId, available) }
     }

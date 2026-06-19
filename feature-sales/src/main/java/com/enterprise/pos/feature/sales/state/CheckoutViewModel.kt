@@ -2,7 +2,6 @@ package com.enterprise.pos.feature.sales.state
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.enterprise.pos.core.AppError
 import com.enterprise.pos.core.EmployeeId
 import com.enterprise.pos.core.Logger
 import com.enterprise.pos.core.Money
@@ -61,9 +60,10 @@ data class CheckoutState(
     val giftCardBalance: Money? = null,
     val giftCardError: String? = null,
     val cashTenderedInput: String = "",
-    val cashChangeDue: Money = Money.ZERO
+    val cashChangeDue: Money = Money.ZERO,
 ) {
     /** Sum of completed tenders + gift card redemptions already applied. */
+    @Suppress("unused")
     val amountPaid: Money
         get() = completedTenders.fold(Money.ZERO) { acc, t -> acc + t.amount }
 }
@@ -72,16 +72,17 @@ data class CheckoutState(
 class CheckoutViewModel @Inject constructor(
     private val router: PaymentRouter,
     private val giftCards: GiftCardRepository,
-    private val returns: ReturnsRepository,
+    @Suppress("unused") private val returns: ReturnsRepository,
     private val orders: OrderRepository,
-    private val splitEngine: SplitTenderEngine,
-    private val logger: Logger = NoopLogger
+    @Suppress("unused") private val splitEngine: SplitTenderEngine,
+    private val logger: Logger = NoopLogger,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(CheckoutState())
     val state: StateFlow<CheckoutState> = _state.asStateFlow()
 
     private val _events = Channel<CheckoutUiEvent>(capacity = Channel.BUFFERED)
+    @Suppress("unused")
     val events = _events.receiveAsFlow()
 
     init {
@@ -109,6 +110,7 @@ class CheckoutViewModel @Inject constructor(
         _state.value = _state.value.copy(selectedProvider = provider)
     }
 
+    @Suppress("unused")
     fun setSplitMode(enabled: Boolean) {
         _state.value = _state.value.copy(
             splitMode = enabled,
@@ -117,6 +119,7 @@ class CheckoutViewModel @Inject constructor(
         )
     }
 
+    @Suppress("unused")
     fun addSplit(provider: PaymentProviderId, amount: Money) {
         val list = _state.value.splitTenders.toMutableList()
         list.removeAll { it.provider == provider.name }
@@ -124,16 +127,19 @@ class CheckoutViewModel @Inject constructor(
         _state.value = _state.value.copy(splitTenders = list)
     }
 
+    @Suppress("unused")
     fun removeSplit(provider: PaymentProviderId) {
         val list = _state.value.splitTenders.toMutableList()
         list.removeAll { it.provider == provider.name }
         _state.value = _state.value.copy(splitTenders = list)
     }
 
+    @Suppress("unused")
     fun setGiftCardCode(s: String) {
         _state.value = _state.value.copy(giftCardCode = s, giftCardError = null)
     }
 
+    @Suppress("unused")
     fun checkGiftCard() {
         val code = _state.value.giftCardCode
         if (code.isBlank()) return
@@ -152,6 +158,7 @@ class CheckoutViewModel @Inject constructor(
         }
     }
 
+    @Suppress("unused")
     fun applyGiftCard(orderId: OrderId, employeeId: EmployeeId) {
         val code = _state.value.giftCardCode
         val balance = _state.value.giftCardBalance ?: return
@@ -164,7 +171,7 @@ class CheckoutViewModel @Inject constructor(
                     val newCompleted = _state.value.completedTenders + TenderSplit(
                         provider = PaymentProviderId.CASH.name, // gift card uses CASH bucket for reconciliation
                         amount = amountToApply,
-                        reference = "giftcard:$code"
+                        reference = "gift_card:$code"
                     )
                     _state.value = _state.value.copy(
                         giftCardBalance = card.balance,
@@ -176,7 +183,7 @@ class CheckoutViewModel @Inject constructor(
                 }
                 .onFailure {
                     _state.value = _state.value.copy(giftCardError = it.message)
-                    _events.trySend(CheckoutUiEvent.Error(it.message ?: "Gift card redemption failed"))
+                    _events.trySend(CheckoutUiEvent.Error(it.message))
                 }
         }
     }
@@ -194,7 +201,7 @@ class CheckoutViewModel @Inject constructor(
 
     fun canProcessCash(): Boolean {
         val tendered = Money.of(_state.value.cashTenderedInput.toDoubleOrNull() ?: 0.0)
-        return !tendered.isZero() && tendered >= _state.value.amountDue
+        return (!tendered.isZero()) && (tendered >= _state.value.amountDue)
     }
 
     /**
@@ -230,7 +237,7 @@ class CheckoutViewModel @Inject constructor(
                 return
             }
 
-        // Cash has a special path that requires tendered amount.
+        // Cash has a special path that needs the tendered amount.
         if (requested == PaymentProviderId.CASH) {
             if (!canProcessCash()) {
                 _state.value = _state.value.copy(isProcessing = false, error = "Enter cash tendered >= amount due")
@@ -240,15 +247,14 @@ class CheckoutViewModel @Inject constructor(
             return
         }
 
-        val init = router.initiatePayment(orderId, amount, requestedProvider = requested)
-        when (init) {
+        when (val init = router.initiatePayment(orderId, amount, requestedProvider = requested)) {
             is Result.Failure -> {
                 _state.value = _state.value.copy(isProcessing = false, error = init.error.message)
                 _events.trySend(CheckoutUiEvent.Error(init.error.message))
             }
             is Result.Success -> {
                 _state.value = _state.value.copy(routedIntent = init.value)
-                val r = router.collectPayment((init as Result.Success).value) { event ->
+                val r = router.collectPayment(init.value) { event ->
                     _state.value = _state.value.copy(currentEvent = event)
                 }
                 when (r) {
@@ -276,12 +282,11 @@ class CheckoutViewModel @Inject constructor(
             _events.trySend(CheckoutUiEvent.Error(init.error.message))
             return
         }
-        val r = router.collectPayment((init as Result.Success).value) { event ->
-            _state.value = _state.value.copy(currentEvent = event)
-        }
-        when (r) {
-            is Result.Success -> {
-                val cashResult = r.value.copy(
+            when (val r = router.collectPayment((init as Result.Success).value) { event ->
+                _state.value = _state.value.copy(currentEvent = event)
+            }) {
+                is Result.Success -> {
+                    val cashResult = r.value.copy(
                     // Augment with cash-specific accounting metadata.
                     metadata = mapOf(
                         "cash_tendered_minor" to tendered.minorUnits.toString(),
@@ -327,7 +332,7 @@ class CheckoutViewModel @Inject constructor(
                 }
                 is Result.Success -> {
                     completed.add(split.copy(paymentId = r.value.id, reference = r.value.providerTransactionId))
-                    remaining = remaining - split.amount
+                    remaining -= split.amount
                     _state.value = _state.value.copy(completedTenders = completed.toList())
                 }
             }
@@ -336,15 +341,19 @@ class CheckoutViewModel @Inject constructor(
         if (remaining.isZero()) {
             val lastResult = completed.lastOrNull()
             if (lastResult != null) {
-                completeOrderWithPayment(orderId, employeeId, PaymentResult(
-                    id = PaymentId("split-${orderId.value}"),
-                    provider = PaymentProviderId.CASH, // synthetic aggregator
-                    providerTransactionId = "split",
-                    amount = _state.value.originalTotal,
-                    currency = "USD",
-                    capturedAt = System.currentTimeMillis(),
-                    metadata = mapOf("split_tenders" to completed.size.toString())
-                ))
+                completeOrderWithPayment(
+                    orderId,
+                    employeeId,
+                    PaymentResult(
+                        id = PaymentId("split-${orderId.value}"),
+                        provider = PaymentProviderId.CASH, // synthetic aggregator
+                        providerTransactionId = "split",
+                        amount = _state.value.originalTotal,
+                        currency = "USD",
+                        capturedAt = System.currentTimeMillis(),
+                        metadata = mapOf("split_tenders" to completed.size.toString())
+                    )
+                )
             }
         } else {
             _state.value = _state.value.copy(
@@ -364,7 +373,7 @@ class CheckoutViewModel @Inject constructor(
         viewModelScope.launch {
             // 1. Persist the payment via the order repository's transactional close.
             orders.markPaid(orderId, payment.toDomainPayment(orderId), employeeId)
-                .onSuccess { closedOrder ->
+                .onSuccess {
                     _state.value = _state.value.copy(
                         isProcessing = false,
                         result = payment,
@@ -376,7 +385,7 @@ class CheckoutViewModel @Inject constructor(
                 .onFailure { err ->
                     logger.e(TAG, "Failed to mark order paid: ${err.message}")
                     _state.value = _state.value.copy(isProcessing = false, error = err.message)
-                    _events.trySend(CheckoutUiEvent.Error(err.message ?: "Failed to complete order"))
+                    _events.trySend(CheckoutUiEvent.Error(err.message))
                 }
         }
     }
@@ -401,6 +410,7 @@ class CheckoutViewModel @Inject constructor(
     fun dismissError() { _state.value = _state.value.copy(error = null) }
 
     // --- Refunds ---
+    @Suppress("unused")
     fun refund(paymentId: PaymentId, originalProvider: PaymentProviderId, amount: Money, reason: String) {
         viewModelScope.launch {
             router.refund(paymentId, originalProvider, amount, reason)
@@ -416,15 +426,15 @@ class CheckoutViewModel @Inject constructor(
 }
 
 private fun PaymentResult.toDomainPayment(orderId: OrderId): DomainPayment = DomainPayment(
-    id = id,
+    id = this.id,
     orderId = orderId,
-    provider = provider.name,
-    providerTransactionId = providerTransactionId,
-    amount = amount,
-    currency = currency,
-    cardBrand = cardBrand,
-    last4 = last4,
-    entryMode = entryMode?.name,
-    receiptUrl = receiptUrl,
-    capturedAt = capturedAt
+    provider = this.provider.name,
+    providerTransactionId = this.providerTransactionId,
+    amount = this.amount,
+    currency = this.currency,
+    cardBrand = this.cardBrand,
+    last4 = this.last4,
+    entryMode = this.entryMode?.name,
+    receiptUrl = this.receiptUrl,
+    capturedAt = this.capturedAt
 )
