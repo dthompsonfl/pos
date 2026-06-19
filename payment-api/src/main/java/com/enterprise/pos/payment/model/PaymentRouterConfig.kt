@@ -1,6 +1,7 @@
 package com.enterprise.pos.payment.model
 
 import com.enterprise.pos.core.Money
+import com.enterprise.pos.domain.model.TipSuggestion
 import kotlinx.serialization.Serializable
 
 /** Configuration for the payment router. Injected at app startup. */
@@ -19,18 +20,6 @@ data class PaymentRouterConfig(
         TipSuggestion.Custom
     )
 )
-
-@Serializable
-sealed class TipSuggestion {
-    @Serializable
-    data class Percentage(val percent: Int) : TipSuggestion()
-    @Serializable
-    data class Fixed(val amount: Money) : TipSuggestion()
-    @Serializable
-    data object Custom : TipSuggestion()
-    @Serializable
-    data object NoTip : TipSuggestion()
-}
 
 /** Routing decision returned by the router's policy engine. */
 data class RoutingDecision(
