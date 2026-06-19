@@ -1,5 +1,6 @@
 package com.enterprise.pos.feature.employees.screen
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -85,7 +86,7 @@ private fun EmployeeEditorSheet(
     onDeactivate: (() -> Unit)?
 ) {
     var name by remember { mutableStateOf(employee?.name ?: "") }
-    var pin by remember { mutableStateOf(employee?.pin ?: "") }
+    var pin by remember { mutableStateOf("") }
     var role by remember { mutableStateOf(employee?.role ?: EmployeeRole.CASHIER) }
     var email by remember { mutableStateOf(employee?.email ?: "") }
     var phone by remember { mutableStateOf(employee?.phone ?: "") }
@@ -97,13 +98,13 @@ private fun EmployeeEditorSheet(
             OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
             OutlinedTextField(
                 value = pin, onValueChange = { pin = it.filter { c -> c.isDigit() }.take(6) },
-                label = { Text("PIN (4-6 digits)") }, modifier = Modifier.fillMaxWidth(),
+                label = { Text(if (employee == null) "PIN (4-6 digits)" else "New PIN (leave blank to keep current)") }, modifier = Modifier.fillMaxWidth(),
                 singleLine = true, visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.NumberPassword)
             )
 
             Text("Role", style = MaterialTheme.typography.titleSmall)
-            EmployeeRole.values().chunked(3).forEach { row ->
+            EmployeeRole.entries.chunked(3).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     row.forEach { r ->
                         FilterChip(
@@ -122,7 +123,7 @@ private fun EmployeeEditorSheet(
 
             Button(
                 onClick = { onSubmit(name, pin, role, email.ifBlank { null }, phone.ifBlank { null }) },
-                enabled = name.isNotBlank() && pin.length >= 4,
+                enabled = name.isNotBlank() && (employee != null || pin.length >= 4),
                 modifier = Modifier.fillMaxWidth().height(56.dp)
             ) { Icon(Icons.Filled.Save, null); Spacer(Modifier.width(8.dp)); Text("Save") }
 
@@ -134,5 +135,3 @@ private fun EmployeeEditorSheet(
         }
     }
 }
-
-private fun Modifier.clickable(onClick: () -> Unit): Modifier = this.then(androidx.compose.foundation.clickable(onClick = onClick))
