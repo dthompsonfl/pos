@@ -185,6 +185,7 @@ value class Percent private constructor(val basisPoints: Int) {
 value class Quantity private constructor(val value: BigDecimal) : Comparable<Quantity> {
     val asInt: Int get() = value.setScale(0, RoundingMode.HALF_UP).toInt()
     val asDouble: Double get() = value.toDouble()
+    val wholeUnits: Int get() = value.setScale(0, RoundingMode.DOWN).toInt()
     val isZero: Boolean get() = value.compareTo(BigDecimal.ZERO) == 0
     val isPositive: Boolean get() = value > BigDecimal.ZERO
     val isNegative: Boolean get() = value < BigDecimal.ZERO
