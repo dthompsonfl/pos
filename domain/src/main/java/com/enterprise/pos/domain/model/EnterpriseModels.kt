@@ -3,10 +3,12 @@ package com.enterprise.pos.domain.model
 import com.enterprise.pos.core.CustomerId
 import com.enterprise.pos.core.EmployeeId
 import com.enterprise.pos.core.Id
+import com.enterprise.pos.core.IdTag
 import com.enterprise.pos.core.Money
 import com.enterprise.pos.core.OrderId
 import com.enterprise.pos.core.PaymentId
 import com.enterprise.pos.core.RegisterId
+import com.enterprise.pos.core.ShiftTag
 import com.enterprise.pos.core.StoreId
 import com.enterprise.pos.core.TableId
 import kotlinx.serialization.Serializable
@@ -258,6 +260,21 @@ data class TipPoolSummary(
 
 @Serializable
 enum class TipPoolType { NONE, EVEN_SPLIT, HOURS_WEIGHTED, ROLE_WEIGHTED }
+
+@Serializable
+sealed class TipSuggestion {
+    @Serializable
+    data class Percentage(val percent: Int) : TipSuggestion()
+
+    @Serializable
+    data class Fixed(val amount: Money) : TipSuggestion()
+
+    @Serializable
+    data object Custom : TipSuggestion()
+
+    @Serializable
+    data object NoTip : TipSuggestion()
+}
 
 // ============================================================
 // INVENTORY ADJUSTMENTS & TRANSFERS
