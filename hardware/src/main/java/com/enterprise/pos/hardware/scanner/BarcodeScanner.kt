@@ -1,11 +1,7 @@
 package com.enterprise.pos.hardware.scanner
 
-import android.content.Context
 import android.view.KeyEvent
-import com.enterprise.pos.core.Result
-import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 
@@ -21,6 +17,7 @@ interface BarcodeScanner {
  * terminating ENTER. We hook Activity.dispatchKeyEvent / a custom OnKeyListener to capture
  * scans. The activity must forward key events via [onKeyEvent].
  */
+@Suppress("unused")
 class KeyboardWedgeScanner : BarcodeScanner {
     private val _scans = MutableSharedFlow<String>(extraBufferCapacity = 16)
     override val scans: Flow<String> = _scans.asSharedFlow()
@@ -33,7 +30,7 @@ class KeyboardWedgeScanner : BarcodeScanner {
     fun onKeyEvent(keyCode: Int, event: KeyEvent): Boolean {
         if (event.action != KeyEvent.ACTION_DOWN) return false
         val now = System.currentTimeMillis()
-        if (now - lastKeyTime > 500L) buffer.clear()
+        if (now - lastKeyTime > burstThresholdMs) buffer.clear()
         lastKeyTime = now
 
         return when (keyCode) {
@@ -62,6 +59,7 @@ class CameraScanner : BarcodeScanner {
     private val _scans = MutableSharedFlow<String>(extraBufferCapacity = 4)
     override val scans: Flow<String> = _scans.asSharedFlow()
 
+    @Suppress("unused")
     fun emitScan(value: String) {
         _scans.tryEmit(value)
     }
