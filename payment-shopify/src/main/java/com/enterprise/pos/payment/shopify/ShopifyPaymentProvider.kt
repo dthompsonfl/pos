@@ -1,6 +1,5 @@
 package com.enterprise.pos.payment.shopify
 
-import com.enterprise.pos.core.AppError
 import com.enterprise.pos.core.Logger
 import com.enterprise.pos.core.Money
 import com.enterprise.pos.core.NoopLogger
@@ -57,12 +56,13 @@ class ShopifyPaymentProvider(
 
     override suspend fun initialize(config: ProviderConfig): Result<Unit> = Result.catching {
         this.config = config
-        require(config.storefrontDomain?.isNotBlank() == true) {
+        val storefrontDomain = requireNotNull(config.storefrontDomain?.takeIf { it.isNotBlank() }) {
             "Shopify shop domain required"
         }
+        val accessToken = config.accessToken
         // Verify the Admin API token by issuing a lightweight shop query.
-        if (adminApi != null && config.accessToken != null) {
-            val ok = adminApi.verifyToken(config.storefrontDomain, config.accessToken)
+        if (adminApi != null && !accessToken.isNullOrBlank()) {
+            val ok = adminApi.verifyToken(storefrontDomain, accessToken)
             if (!ok) throw RuntimeException("Shopify Admin API token invalid")
         }
         _status.value = ReaderStatus.Connected(
@@ -132,8 +132,11 @@ class ShopifyPaymentProvider(
     override suspend fun cancelPayment(handle: PaymentIntentHandle): Result<Unit> = Result.success(Unit)
 
     override suspend fun refund(paymentId: PaymentId, amount: Money?, reason: String): Result<RefundResult> = Result.catching {
-        if (adminApi != null && config != null) {
-            adminApi.refund(config!!.storefrontDomain!!, config!!.accessToken!!, paymentId.value, amount)
+        val currentConfig = config
+        val storefrontDomain = currentConfig?.storefrontDomain
+        val accessToken = currentConfig?.accessToken
+        if (adminApi != null && !storefrontDomain.isNullOrBlank() && !accessToken.isNullOrBlank()) {
+            adminApi.refund(storefrontDomain, accessToken, paymentId.value, amount)
         }
         delay(600)
         RefundResult(
