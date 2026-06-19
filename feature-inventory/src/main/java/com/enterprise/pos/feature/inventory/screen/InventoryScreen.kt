@@ -146,7 +146,7 @@ private fun AdjustmentSheet(
             Text("Reason", style = MaterialTheme.typography.titleSmall)
             Spacer(Modifier.height(8.dp))
             // Reason picker — chip row
-            AdjustmentReason.values().chunked(3).forEach { row ->
+            AdjustmentReason.entries.chunked(3).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     row.forEach { r ->
                         FilterChip(
