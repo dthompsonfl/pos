@@ -100,6 +100,7 @@ object Mappers {
         tags = if (tags.isBlank()) emptyList() else tags.split(","),
         trackInventory = trackInventory,
         isAvailable = isAvailable,
+        displayOrder = displayOrder,
         kitchenRoutingKey = kitchenRoutingKey,
         prepTimeMinutes = prepTimeMinutes
     )
@@ -141,6 +142,7 @@ object Mappers {
         tags = tags.joinToString(","),
         trackInventory = trackInventory,
         isAvailable = isAvailable,
+        displayOrder = displayOrder,
         kitchenRoutingKey = kitchenRoutingKey,
         prepTimeMinutes = prepTimeMinutes,
         updatedAt = now,

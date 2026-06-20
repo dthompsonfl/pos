@@ -46,8 +46,7 @@ data class CustomerDetailState(
 class CustomerDetailViewModel @Inject constructor(
     private val customerRepo: CustomerRepository,
     private val orderRepo: OrderRepository,
-    private val promotionRepo: PromotionRepository,
-    private val giftCardRepo: GiftCardRepository
+    private val promotionRepo: PromotionRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(CustomerDetailState())

@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -18,7 +19,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.enterprise.pos.core.CustomerId
 import com.enterprise.pos.feature.customers.state.CustomerEditEvent
-import com.enterprise.pos.feature.customers.state.CustomerEditForm
 import com.enterprise.pos.feature.customers.state.CustomerEditViewModel
 import com.enterprise.pos.ui.theme.PosTheme
 
@@ -85,7 +85,7 @@ fun CustomerEditScreen(
 
             OutlinedTextField(
                 value = state.form.firstName,
-                onValueChange = { viewModel.updateForm { it.copy(firstName = it.firstName) } },
+                onValueChange = { value -> viewModel.updateForm { it.copy(firstName = value) } },
                 label = { Text("First Name *") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
@@ -96,7 +96,7 @@ fun CustomerEditScreen(
 
             OutlinedTextField(
                 value = state.form.lastName,
-                onValueChange = { viewModel.updateForm { it.copy(lastName = it.lastName) } },
+                onValueChange = { value -> viewModel.updateForm { it.copy(lastName = value) } },
                 label = { Text("Last Name *") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
@@ -107,7 +107,7 @@ fun CustomerEditScreen(
 
             OutlinedTextField(
                 value = state.form.phone,
-                onValueChange = { viewModel.updateForm { it.copy(phone = it.phone) } },
+                onValueChange = { value -> viewModel.updateForm { it.copy(phone = value) } },
                 label = { Text("Phone") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
@@ -118,7 +118,7 @@ fun CustomerEditScreen(
 
             OutlinedTextField(
                 value = state.form.email,
-                onValueChange = { viewModel.updateForm { it.copy(email = it.email) } },
+                onValueChange = { value -> viewModel.updateForm { it.copy(email = value) } },
                 label = { Text("Email") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
@@ -131,7 +131,7 @@ fun CustomerEditScreen(
 
             OutlinedTextField(
                 value = state.form.address,
-                onValueChange = { viewModel.updateForm { it.copy(address = it.address) } },
+                onValueChange = { value -> viewModel.updateForm { it.copy(address = value) } },
                 label = { Text("Street Address") },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
@@ -140,7 +140,7 @@ fun CustomerEditScreen(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = state.form.city,
-                    onValueChange = { viewModel.updateForm { it.copy(city = it.city) } },
+                    onValueChange = { value -> viewModel.updateForm { it.copy(city = value) } },
                     label = { Text("City") },
                     modifier = Modifier.weight(1f),
                     singleLine = true,
@@ -148,7 +148,7 @@ fun CustomerEditScreen(
                 )
                 OutlinedTextField(
                     value = state.form.state,
-                    onValueChange = { viewModel.updateForm { it.copy(state = it.state) } },
+                    onValueChange = { value -> viewModel.updateForm { it.copy(state = value) } },
                     label = { Text("State") },
                     modifier = Modifier.weight(1f),
                     singleLine = true,
@@ -159,7 +159,7 @@ fun CustomerEditScreen(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = state.form.zip,
-                    onValueChange = { viewModel.updateForm { it.copy(zip = it.zip) } },
+                    onValueChange = { value -> viewModel.updateForm { it.copy(zip = value) } },
                     label = { Text("ZIP") },
                     modifier = Modifier.weight(1f),
                     singleLine = true,
@@ -167,7 +167,7 @@ fun CustomerEditScreen(
                 )
                 OutlinedTextField(
                     value = state.form.country,
-                    onValueChange = { viewModel.updateForm { it.copy(country = it.country) } },
+                    onValueChange = { value -> viewModel.updateForm { it.copy(country = value) } },
                     label = { Text("Country") },
                     modifier = Modifier.weight(1f),
                     singleLine = true,
@@ -179,7 +179,7 @@ fun CustomerEditScreen(
 
             OutlinedTextField(
                 value = state.form.loyaltyNumber,
-                onValueChange = { viewModel.updateForm { it.copy(loyaltyNumber = it.loyaltyNumber) } },
+                onValueChange = { value -> viewModel.updateForm { it.copy(loyaltyNumber = value) } },
                 label = { Text("Loyalty Number") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
@@ -188,7 +188,7 @@ fun CustomerEditScreen(
 
             OutlinedTextField(
                 value = state.form.group,
-                onValueChange = { viewModel.updateForm { it.copy(group = it.group) } },
+                onValueChange = { value -> viewModel.updateForm { it.copy(group = value) } },
                 label = { Text("Customer Group") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
@@ -197,7 +197,7 @@ fun CustomerEditScreen(
 
             OutlinedTextField(
                 value = state.form.tags,
-                onValueChange = { viewModel.updateForm { it.copy(tags = it.tags) } },
+                onValueChange = { value -> viewModel.updateForm { it.copy(tags = value) } },
                 label = { Text("Tags (comma-separated)") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
@@ -206,7 +206,7 @@ fun CustomerEditScreen(
 
             OutlinedTextField(
                 value = state.form.birthday,
-                onValueChange = { viewModel.updateForm { it.copy(birthday = it.birthday) } },
+                onValueChange = { value -> viewModel.updateForm { it.copy(birthday = value) } },
                 label = { Text("Birthday (YYYY-MM-DD)") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
@@ -215,7 +215,7 @@ fun CustomerEditScreen(
 
             OutlinedTextField(
                 value = state.form.notes,
-                onValueChange = { viewModel.updateForm { it.copy(notes = it.notes) } },
+                onValueChange = { value -> viewModel.updateForm { it.copy(notes = value) } },
                 label = { Text("Notes") },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 3,
@@ -224,7 +224,7 @@ fun CustomerEditScreen(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Checkbox(
                     checked = state.form.marketingConsent,
@@ -268,18 +268,6 @@ private fun SectionTitle(text: String) {
         fontWeight = FontWeight.SemiBold,
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(top = 8.dp)
-    )
-}
-
-@Composable
-fun CustomerAddScreen(
-    onBack: () -> Unit,
-    onSaved: () -> Unit
-) {
-    CustomerEditScreen(
-        customerId = null,
-        onBack = onBack,
-        onSaved = onSaved
     )
 }
 

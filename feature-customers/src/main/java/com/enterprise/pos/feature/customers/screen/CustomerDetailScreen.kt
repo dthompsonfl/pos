@@ -19,6 +19,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.enterprise.pos.core.CustomerId
 import com.enterprise.pos.core.StoreId
+import com.enterprise.pos.feature.customers.state.CustomerDetailEvent
 import com.enterprise.pos.feature.customers.state.CustomerDetailViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -30,16 +31,33 @@ fun CustomerDetailScreen(
     customerId: CustomerId,
     storeId: StoreId,
     onBack: () -> Unit,
+    onEdit: () -> Unit = {},
+    onDeleted: () -> Unit = {},
     viewModel: CustomerDetailViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
     LaunchedEffect(customerId, storeId) { viewModel.load(customerId, storeId) }
+
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is CustomerDetailEvent.Deleted -> onDeleted()
+                is CustomerDetailEvent.Error -> {}
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(state.customer?.name ?: "Customer", fontWeight = FontWeight.Bold) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, "Back") } }
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, "Back") } },
+                actions = {
+                    IconButton(onClick = onEdit) { Icon(Icons.Filled.Edit, "Edit") }
+                    IconButton(onClick = { showDeleteDialog = true }) { Icon(Icons.Filled.Delete, "Delete") }
+                }
             )
         }
     ) { padding ->
@@ -109,6 +127,24 @@ fun CustomerDetailScreen(
                 }
             }
 
+            // Customer details
+            item {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("Details", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        customer.address?.let { InfoRow("Address", it) }
+                        customer.city?.let { InfoRow("City", it) }
+                        customer.state?.let { InfoRow("State", it) }
+                        customer.zip?.let { InfoRow("ZIP", it) }
+                        customer.country?.let { InfoRow("Country", it) }
+                        customer.loyaltyNumber?.let { InfoRow("Loyalty #", it) }
+                        customer.group?.let { InfoRow("Group", it) }
+                        if (customer.tags.isNotEmpty()) { InfoRow("Tags", customer.tags.joinToString(", ")) }
+                        if (customer.marketingOptIn) { InfoRow("Marketing", "Opted in") }
+                    }
+                }
+            }
+
             // Favorite items
             if (state.favoriteItems.isNotEmpty()) {
                 item { Text("Favorite Items", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold) }
@@ -169,6 +205,32 @@ fun CustomerDetailScreen(
                 HorizontalDivider()
             }
         }
+    }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Delete Customer") },
+            text = { Text("This will permanently delete ${customer?.name ?: "this customer"}. This action cannot be undone.") },
+            confirmButton = {
+                Button(
+                    onClick = { viewModel.deleteCustomer(customerId); showDeleteDialog = false },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) { Text("Delete") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
+}
+
+@Composable
+private fun InfoRow(label: String, value: String) {
+    Row(Modifier.fillMaxWidth()) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.weight(1f))
+        Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
     }
 }
 

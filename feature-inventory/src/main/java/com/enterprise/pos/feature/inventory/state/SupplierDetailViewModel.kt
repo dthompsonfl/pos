@@ -91,13 +91,22 @@ class SupplierDetailViewModel @Inject constructor(
         val supplierId = _state.value.supplier?.id ?: return
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true)
-            // Placeholder for delete operation — in production would call repo.deleteSupplier
-            _state.value = _state.value.copy(
-                isLoading = false,
-                showDeleteDialog = false,
-                info = "Supplier deleted"
-            )
-            _events.send(SupplierDetailEvent.Back)
+            inventoryRepo.deleteSupplier(supplierId)
+                .onSuccess {
+                    _state.value = _state.value.copy(
+                        isLoading = false,
+                        showDeleteDialog = false,
+                        info = "Supplier deleted"
+                    )
+                    _events.send(SupplierDetailEvent.Back)
+                }
+                .onFailure { err ->
+                    _state.value = _state.value.copy(
+                        isLoading = false,
+                        showDeleteDialog = false,
+                        error = err.message
+                    )
+                }
         }
     }
 

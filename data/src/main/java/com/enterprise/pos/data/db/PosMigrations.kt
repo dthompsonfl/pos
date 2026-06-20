@@ -49,6 +49,31 @@ object PosMigrations {
         }
     }
 
+    val MIGRATION_3_4: Migration = object : Migration(3, 4) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Add modifier_groups table for catalog modifier support
+            db.execSQL("""
+                CREATE TABLE IF NOT EXISTS modifier_groups (
+                    id TEXT NOT NULL PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    description TEXT NOT NULL,
+                    optionsJson TEXT NOT NULL,
+                    displayOrder INTEGER NOT NULL,
+                    isRequired INTEGER NOT NULL,
+                    maxSelections INTEGER NOT NULL,
+                    minSelections INTEGER NOT NULL,
+                    updatedAt INTEGER NOT NULL,
+                    syncState TEXT NOT NULL DEFAULT 'SYNCED'
+                )
+            """.trimIndent())
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_modifier_groups_name ON modifier_groups(name)")
+
+            // Add modifierGroupsJson and displayOrder columns to products
+            db.execSQL("ALTER TABLE products ADD COLUMN modifierGroupsJson TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE products ADD COLUMN displayOrder INTEGER NOT NULL DEFAULT 0")
+        }
+    }
+
     val MIGRATION_4_5: Migration = object : Migration(4, 5) {
         override fun migrate(db: SupportSQLiteDatabase) {
             // Add extended customer fields

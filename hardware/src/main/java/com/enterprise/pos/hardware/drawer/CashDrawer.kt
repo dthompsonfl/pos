@@ -6,8 +6,6 @@ import com.enterprise.pos.core.AppError
 import com.enterprise.pos.core.Result
 import com.enterprise.pos.hardware.printer.PrinterDriver
 
-/** Cash drawer controller. Real drawers are kicked via ESC pm t1 t2 to a connected printer,
- *  or via a dedicated USB relay. We provide both paths. */
 interface CashDrawerDriver {
     suspend fun open(): Result<Unit>
     val displayName: String
@@ -18,10 +16,12 @@ class PrinterKickCashDrawerDriver(
     private val printer: PrinterDriver
 ) : CashDrawerDriver {
     override val displayName: String = "Via ${printer.displayName}"
-    override suspend fun open(): Result<Unit> = Result.catching {
-        if (!printer.isConnected) throw IllegalStateException("Printer not connected")
-        // ESC pm t1 t2 — pulse drawer kick on pin 2 for ~250ms.
-        printer.print(byteArrayOf(0x1B.toByte(), 0x70.toByte(), 0x00.toByte(), 0x19.toByte(), 0xFA.toByte()))
+
+    override suspend fun open(): Result<Unit> {
+        if (!printer.isConnected) {
+            return Result.failure(AppError.Hardware("CashDrawer", "Printer is not connected"))
+        }
+        return printer.print(byteArrayOf(0x1B.toByte(), 0x70.toByte(), 0x00.toByte(), 0x19.toByte(), 0xFA.toByte()))
     }
 }
 
@@ -30,9 +30,8 @@ class UsbRelayCashDrawerDriver(
     deviceId: String,
     override val displayName: String = "USB Relay Drawer ($deviceId)"
 ) : CashDrawerDriver {
-    override suspend fun open(): Result<Unit> = Result.catching {
-        // Real: open USB relay, fire 200ms pulse, close.
-    }
+    override suspend fun open(): Result<Unit> =
+        Result.failure(AppError.Hardware("CashDrawer", "USB relay drawer transport is not implemented yet"))
 }
 
 class CashDrawerManager(
@@ -46,15 +45,16 @@ class CashDrawerManager(
         if (drivers.isEmpty()) {
             return Result.failure(AppError.Hardware("CashDrawer", "No drawer configured"))
         }
-        for (d in drivers) {
-            val r = d.open()
-            if (r is Result.Success) return r
+        var lastError: AppError? = null
+        for (driver in drivers) {
+            val result = driver.open()
+            if (result is Result.Success) return result
+            if (result is Result.Failure) lastError = result.error
         }
-        return Result.failure(AppError.Hardware("CashDrawer", "All drawer drivers failed"))
+        return Result.failure(lastError ?: AppError.Hardware("CashDrawer", "All drawer drivers failed"))
     }
 }
 
-/** Secondary display (customer-facing) — used to show running cart, totals, ads, etc. */
 interface SecondaryDisplayController {
     suspend fun showCart(order: com.enterprise.pos.domain.model.Order): Result<Unit>
     suspend fun showWelcome(): Result<Unit>
@@ -63,13 +63,15 @@ interface SecondaryDisplayController {
 }
 
 class NoopSecondaryDisplay : SecondaryDisplayController {
-    override suspend fun showCart(order: com.enterprise.pos.domain.model.Order) = Result.success(Unit)
-    override suspend fun showWelcome() = Result.success(Unit)
-    override suspend fun showThankYou() = Result.success(Unit)
-    override suspend fun clear() = Result.success(Unit)
+    override suspend fun showCart(order: com.enterprise.pos.domain.model.Order) = unavailable()
+    override suspend fun showWelcome() = unavailable()
+    override suspend fun showThankYou() = unavailable()
+    override suspend fun clear() = unavailable()
+
+    private fun unavailable(): Result<Unit> =
+        Result.failure(AppError.Hardware("CustomerDisplay", "No customer display configured"))
 }
 
-/** Presentation display — uses Android's Presentation API to drive a second screen over HDMI/USB-C. */
 @Suppress("unused")
 class PresentationSecondaryDisplay(
     context: Context
@@ -81,13 +83,15 @@ class PresentationSecondaryDisplay(
         return (displayManager?.displays?.size ?: 0) > 1
     }
 
-    override suspend fun showCart(order: com.enterprise.pos.domain.model.Order): Result<Unit> = Result.catching {
-        // Real: create a Presentation on DisplayManager.getDisplays()[1] and render a Compose view
-        // showing line items + running total. Update on each cart change.
-        hasSecondaryDisplay()
-        Unit
-    }
-    override suspend fun showWelcome() = Result.catching { hasSecondaryDisplay(); Unit }
-    override suspend fun showThankYou() = Result.catching { hasSecondaryDisplay(); Unit }
-    override suspend fun clear() = Result.catching { hasSecondaryDisplay(); Unit }
+    override suspend fun showCart(order: com.enterprise.pos.domain.model.Order): Result<Unit> = ensureDisplayAvailable()
+    override suspend fun showWelcome(): Result<Unit> = ensureDisplayAvailable()
+    override suspend fun showThankYou(): Result<Unit> = ensureDisplayAvailable()
+    override suspend fun clear(): Result<Unit> = ensureDisplayAvailable()
+
+    private fun ensureDisplayAvailable(): Result<Unit> =
+        if (hasSecondaryDisplay()) {
+            Result.success(Unit)
+        } else {
+            Result.failure(AppError.Hardware("CustomerDisplay", "No secondary display detected"))
+        }
 }
