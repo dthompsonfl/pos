@@ -75,11 +75,34 @@ android {
             buildConfigField("boolean", "ENABLE_MANUAL_CARD_ENTRY", "false")
         }
     }
+    sourceSets {
+        getByName("main") {
+            java.exclude(
+                "com/enterprise/pos/ui/components/PosBadge.kt",
+                "com/enterprise/pos/ui/components/PosButton.kt",
+                "com/enterprise/pos/ui/components/PosCard.kt",
+                "com/enterprise/pos/ui/components/PosDialog.kt",
+                "com/enterprise/pos/ui/components/PosDivider.kt",
+                "com/enterprise/pos/ui/components/PosDropdownField.kt",
+                "com/enterprise/pos/ui/components/PosEmptyState.kt",
+                "com/enterprise/pos/ui/components/PosForm.kt",
+                "com/enterprise/pos/ui/components/PosResponsive.kt",
+                "com/enterprise/pos/ui/components/PosSearch.kt",
+                "com/enterprise/pos/ui/components/PosSwitchField.kt",
+                "com/enterprise/pos/ui/components/PosTable.kt",
+                "com/enterprise/pos/ui/components/PosTextField.kt",
+                "com/enterprise/pos/ui/theme/**"
+            )
+        }
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions { jvmTarget = "17" }
+    kotlinOptions {
+        jvmTarget = "17"
+        freeCompilerArgs += "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api"
+    }
     buildFeatures {
         compose = true
         buildConfig = true
@@ -129,6 +152,7 @@ dependencies {
     implementation(project(":core"))
     implementation(project(":domain"))
     implementation(project(":data"))
+    implementation(project(":ui"))
     implementation(project(":payment-api"))
     implementation(project(":payment-stripe"))
     implementation(project(":payment-square"))
