@@ -26,23 +26,34 @@ fun PrimaryButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    isLoading: Boolean = false,
     icon: ImageVector? = null,
     shape: Shape = MaterialTheme.shapes.medium
 ) {
     Button(
         onClick = onClick,
         modifier = modifier
-            .semantics { contentDescription = text },
-        enabled = enabled,
+            .semantics { contentDescription = if (isLoading) "$text loading" else text },
+        enabled = enabled && !isLoading,
         shape = shape
     ) {
-        if (icon != null) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
+        when {
+            isLoading -> {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+            icon != null -> {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+            }
         }
         Text(
             text = text,
@@ -250,6 +261,7 @@ private fun ButtonVariantsPreview() {
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 PrimaryButton(text = "Primary", onClick = {})
+                PrimaryButton(text = "Primary Loading", onClick = {}, isLoading = true)
                 SecondaryButton(text = "Secondary", onClick = {})
                 TertiaryButton(text = "Tertiary", onClick = {})
                 DangerButton(text = "Danger", onClick = {})
@@ -276,6 +288,7 @@ private fun ButtonVariantsDarkPreview() {
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 PrimaryButton(text = "Primary", onClick = {})
+                PrimaryButton(text = "Primary Loading", onClick = {}, isLoading = true)
                 SecondaryButton(text = "Secondary", onClick = {})
                 TertiaryButton(text = "Tertiary", onClick = {})
                 DangerButton(text = "Danger", onClick = {})
