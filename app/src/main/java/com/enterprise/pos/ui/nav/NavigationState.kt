@@ -4,9 +4,11 @@ import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -14,6 +16,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.navigation.NavController
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -112,9 +115,10 @@ fun rememberNavigationState(
 ): State<NavigationState> {
     val scope = rememberCoroutineScope()
     var state by remember { mutableStateOf(NavigationState.INITIAL) }
+    val rememberedState = remember { mutableStateOf(state) }
 
     LaunchedEffect(navController) {
-        navController.addOnDestinationChangedListener { _, destination, arguments ->
+        navController.addOnDestinationChangedListener { _, destination, _ ->
             val currentRoute = destination.route
             val previousRoute = state.currentRoute
             val backStack = navController.currentBackStack.value
@@ -129,11 +133,12 @@ fun rememberNavigationState(
             )
 
             state = newState
+            rememberedState.value = newState
             scope.launch { manager.saveState(newState) }
         }
     }
 
-    return remember { mutableStateOf(state) }
+    return rememberedState
 }
 
 /**
