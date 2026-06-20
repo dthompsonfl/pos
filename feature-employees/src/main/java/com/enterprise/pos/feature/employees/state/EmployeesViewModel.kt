@@ -38,7 +38,18 @@ class EmployeesViewModel @Inject constructor(
         _state.value = _state.value.copy(pin = _state.value.pin + digit, loginError = null)
     }
 
-    fun clearPin() { _state.value = _state.value.copy(pin = "", loginError = null) }
+    fun clearPin() {
+        _state.value = _state.value.copy(pin = "", loginError = null)
+    }
+
+    fun lockRegister() {
+        _state.value = _state.value.copy(
+            currentEmployee = null,
+            pin = "",
+            loginError = null,
+            isLoggingIn = false
+        )
+    }
 
     fun login(onSuccess: (com.enterprise.pos.domain.model.Employee) -> Unit) {
         val pin = _state.value.pin
