@@ -52,7 +52,14 @@ fun PosTextField(
         isError = isError,
         supportingText = supportingText?.let { { Text(it) } },
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
-        keyboardActions = KeyboardActions(onAny = { onImeAction?.invoke() }),
+        keyboardActions = KeyboardActions(
+            onDone = { onImeAction?.invoke() },
+            onGo = { onImeAction?.invoke() },
+            onNext = { onImeAction?.invoke() },
+            onPrevious = { onImeAction?.invoke() },
+            onSearch = { onImeAction?.invoke() },
+            onSend = { onImeAction?.invoke() }
+        ),
         visualTransformation = visualTransformation,
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = MaterialTheme.colorScheme.primary,
