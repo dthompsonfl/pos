@@ -8,6 +8,18 @@ import androidx.navigation.navDeepLink
 private const val HTTPS_SCHEME = "https"
 private const val APP_SCHEME = "enterprise-pos"
 private const val WEB_HOST = "pos.enterprise.com"
+private const val URI_PATTERN_DASHBOARD = "dashboard"
+private const val URI_PATTERN_CATALOG = "catalog"
+private const val URI_PATTERN_FLOOR = "floor"
+private const val URI_PATTERN_KDS = "kds"
+private const val URI_PATTERN_ORDERS = "orders"
+private const val URI_PATTERN_EMPLOYEES = "employees"
+private const val URI_PATTERN_INVENTORY = "inventory"
+private const val URI_PATTERN_SHIFTS = "shifts"
+private const val URI_PATTERN_RESERVATIONS = "reservations"
+private const val URI_PATTERN_DIAGNOSTICS = "diagnostics"
+private const val URI_PATTERN_MIGRATION = "migration"
+private const val URI_PATTERN_LOGIN = "login"
 
 /**
  * Builds a deep link [Uri] for the given screen with optional parameters.
@@ -91,18 +103,18 @@ fun handleDeepLink(navController: NavController, uri: Uri): Boolean {
 
     // Map path to route
     val route = when {
-        path == "/$URI_PATTERN_DASHBOARD" || pathSegments.firstOrNull() == "dashboard" -> Screen.Dashboard.route
-        path == "/$URI_PATTERN_CATALOG" || pathSegments.firstOrNull() == "catalog" -> Screen.Catalog.route
-        path == "/$URI_PATTERN_FLOOR" || pathSegments.firstOrNull() == "floor" -> Screen.Floor.route
-        path == "/$URI_PATTERN_KDS" || pathSegments.firstOrNull() == "kds" -> Screen.Kds.route
-        path == "/$URI_PATTERN_ORDERS" || pathSegments.firstOrNull() == "orders" -> Screen.OrderHistory.route
-        path == "/$URI_PATTERN_EMPLOYEES" || pathSegments.firstOrNull() == "employees" -> Screen.Employees.route
-        path == "/$URI_PATTERN_INVENTORY" || pathSegments.firstOrNull() == "inventory" -> Screen.Inventory.route
-        path == "/$URI_PATTERN_SHIFTS" || pathSegments.firstOrNull() == "shifts" -> Screen.Shifts.route
-        path == "/$URI_PATTERN_RESERVATIONS" || pathSegments.firstOrNull() == "reservations" -> Screen.Reservations.route
-        path == "/$URI_PATTERN_DIAGNOSTICS" || pathSegments.firstOrNull() == "diagnostics" -> Screen.Diagnostics.route
-        path == "/$URI_PATTERN_MIGRATION" || pathSegments.firstOrNull() == "migration" -> Screen.Migration.route
-        path == "/$URI_PATTERN_LOGIN" || pathSegments.firstOrNull() == "login" -> Screen.Login.route
+        path == "/$URI_PATTERN_DASHBOARD" || pathSegments.firstOrNull() == URI_PATTERN_DASHBOARD -> Screen.Dashboard.route
+        path == "/$URI_PATTERN_CATALOG" || pathSegments.firstOrNull() == URI_PATTERN_CATALOG -> Screen.Catalog.route
+        path == "/$URI_PATTERN_FLOOR" || pathSegments.firstOrNull() == URI_PATTERN_FLOOR -> Screen.Floor.route
+        path == "/$URI_PATTERN_KDS" || pathSegments.firstOrNull() == URI_PATTERN_KDS -> Screen.Kds.route
+        path == "/$URI_PATTERN_ORDERS" || pathSegments.firstOrNull() == URI_PATTERN_ORDERS -> Screen.OrderHistory.route
+        path == "/$URI_PATTERN_EMPLOYEES" || pathSegments.firstOrNull() == URI_PATTERN_EMPLOYEES -> Screen.Employees.route
+        path == "/$URI_PATTERN_INVENTORY" || pathSegments.firstOrNull() == URI_PATTERN_INVENTORY -> Screen.Inventory.route
+        path == "/$URI_PATTERN_SHIFTS" || pathSegments.firstOrNull() == URI_PATTERN_SHIFTS -> Screen.Shifts.route
+        path == "/$URI_PATTERN_RESERVATIONS" || pathSegments.firstOrNull() == URI_PATTERN_RESERVATIONS -> Screen.Reservations.route
+        path == "/$URI_PATTERN_DIAGNOSTICS" || pathSegments.firstOrNull() == URI_PATTERN_DIAGNOSTICS -> Screen.Diagnostics.route
+        path == "/$URI_PATTERN_MIGRATION" || pathSegments.firstOrNull() == URI_PATTERN_MIGRATION -> Screen.Migration.route
+        path == "/$URI_PATTERN_LOGIN" || pathSegments.firstOrNull() == URI_PATTERN_LOGIN -> Screen.Login.route
 
         // Product detail
         pathSegments.firstOrNull() == "product" && pathSegments.size == 2 -> {
