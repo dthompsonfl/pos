@@ -1,5 +1,6 @@
 package com.enterprise.pos.data.db.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -28,9 +29,11 @@ data class ProductEntity(
     val tags: String, // CSV
     val trackInventory: Boolean,
     val isAvailable: Boolean,
+    val displayOrder: Int = 0,
     val kitchenRoutingKey: String?,
     val prepTimeMinutes: Int,
     val updatedAt: Long,
+    val modifierGroupsJson: String = "",
     val syncState: String = "SYNCED" // SYNCED | PENDING | CONFLICT
 )
 
@@ -126,6 +129,8 @@ data class DiscountEntity(
 data class CustomerEntity(
     @PrimaryKey val id: String,
     val name: String,
+    val firstName: String? = null,
+    val lastName: String? = null,
     val email: String?,
     val phone: String?,
     val loyaltyPoints: Int,
@@ -134,6 +139,13 @@ data class CustomerEntity(
     val notes: String?,
     val birthday: String?,
     val address: String?,
+    val city: String? = null,
+    val state: String? = null,
+    val zip: String? = null,
+    val country: String? = "USA",
+    val tags: String = "",
+    @ColumnInfo(name = "customerGroup") val group: String? = null,
+    val loyaltyNumber: String? = null,
     val dietaryRestrictions: String,
     val createdAt: Long,
     val updatedAt: Long,
@@ -144,12 +156,18 @@ data class CustomerEntity(
 data class EmployeeEntity(
     @PrimaryKey val id: String,
     val name: String,
+    val firstName: String? = null,
+    val lastName: String? = null,
     /** PBKDF2 hash, never the raw PIN. */
     val pinHash: String,
     val role: String,
     val active: Boolean,
     val email: String?,
     val phone: String?,
+    val hourlyRateMinor: Long = 0,
+    val hireDate: Long? = null,
+    val notes: String? = null,
+    val customPermissions: String = "",
     val createdAt: Long,
     val failedLoginAttempts: Int = 0,
     val lockedUntil: Long? = null,
@@ -219,4 +237,18 @@ data class SyncQueueEntity(
     val enqueuedAt: Long,
     val attempts: Int = 0,
     val lastError: String? = null
+)
+
+@Entity(tableName = "modifier_groups", indices = [Index("name")])
+data class ModifierGroupEntity(
+    @PrimaryKey val id: String,
+    val name: String,
+    val description: String,
+    val optionsJson: String,
+    val displayOrder: Int,
+    val isRequired: Boolean,
+    val maxSelections: Int,
+    val minSelections: Int,
+    val updatedAt: Long,
+    val syncState: String = "SYNCED"
 )

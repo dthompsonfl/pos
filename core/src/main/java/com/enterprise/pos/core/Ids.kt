@@ -30,6 +30,7 @@ interface TableTag : IdTag
 interface PaymentTag : IdTag
 interface ReceiptTag : IdTag
 interface ShiftTag : IdTag
+interface ModifierGroupTag : IdTag
 
 typealias ProductId = Id<ProductTag>
 typealias VariantId = Id<VariantTag>
@@ -44,6 +45,7 @@ typealias TableId = Id<TableTag>
 typealias PaymentId = Id<PaymentTag>
 typealias ReceiptId = Id<ReceiptTag>
 typealias ShiftId = Id<ShiftTag>
+typealias ModifierGroupId = Id<ModifierGroupTag>
 
 fun randomProductId(): ProductId = Id.random()
 fun randomVariantId(): VariantId = Id.random()
@@ -54,3 +56,4 @@ fun randomEmployeeId(): EmployeeId = Id.random()
 fun randomPaymentId(): PaymentId = Id.random()
 fun randomReceiptId(): ReceiptId = Id.random()
 fun randomShiftId(): ShiftId = Id.random()
+fun randomModifierGroupId(): ModifierGroupId = Id.random()

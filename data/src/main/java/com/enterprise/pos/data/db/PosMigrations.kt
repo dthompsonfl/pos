@@ -17,11 +17,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  */
 object PosMigrations {
 
-    /** Example placeholder migration (no-op since we already use default values for new columns).
-     *  Real migrations will be added as the schema evolves past v3. */
     val MIGRATION_2_3: Migration = object : Migration(2, 3) {
         override fun migrate(db: SupportSQLiteDatabase) {
-            // Add the sync_outbox table (the v3 schema addition).
             db.execSQL("""
                 CREATE TABLE IF NOT EXISTS sync_outbox (
                     id TEXT NOT NULL PRIMARY KEY,
@@ -45,21 +42,39 @@ object PosMigrations {
             db.execSQL("CREATE INDEX IF NOT EXISTS index_sync_outbox_nextAttemptAt ON sync_outbox(nextAttemptAt)")
             db.execSQL("CREATE INDEX IF NOT EXISTS index_sync_outbox_entityType ON sync_outbox(entityType)")
             db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_sync_outbox_idempotencyKey ON sync_outbox(idempotencyKey)")
-
-            // Add new columns to orders (default values provided in entity definition).
             db.execSQL("ALTER TABLE orders ADD COLUMN serviceChargesMinor INTEGER NOT NULL DEFAULT 0")
             db.execSQL("ALTER TABLE orders ADD COLUMN taxExempt INTEGER NOT NULL DEFAULT 0")
-
-            // Add new columns to order_lines (default values provided in entity definition).
             db.execSQL("ALTER TABLE order_lines ADD COLUMN taxCategory TEXT NOT NULL DEFAULT 'STANDARD'")
             db.execSQL("ALTER TABLE order_lines ADD COLUMN taxAmountMinor INTEGER NOT NULL DEFAULT 0")
         }
     }
 
+    val MIGRATION_4_5: Migration = object : Migration(4, 5) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Add extended customer fields
+            db.execSQL("ALTER TABLE customers ADD COLUMN firstName TEXT")
+            db.execSQL("ALTER TABLE customers ADD COLUMN lastName TEXT")
+            db.execSQL("ALTER TABLE customers ADD COLUMN city TEXT")
+            db.execSQL("ALTER TABLE customers ADD COLUMN state TEXT")
+            db.execSQL("ALTER TABLE customers ADD COLUMN zip TEXT")
+            db.execSQL("ALTER TABLE customers ADD COLUMN country TEXT NOT NULL DEFAULT 'USA'")
+            db.execSQL("ALTER TABLE customers ADD COLUMN tags TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE customers ADD COLUMN customerGroup TEXT")
+            db.execSQL("ALTER TABLE customers ADD COLUMN loyaltyNumber TEXT")
+
+            // Add extended employee fields
+            db.execSQL("ALTER TABLE employees ADD COLUMN firstName TEXT")
+            db.execSQL("ALTER TABLE employees ADD COLUMN lastName TEXT")
+            db.execSQL("ALTER TABLE employees ADD COLUMN hourlyRateMinor INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE employees ADD COLUMN hireDate INTEGER")
+            db.execSQL("ALTER TABLE employees ADD COLUMN notes TEXT")
+            db.execSQL("ALTER TABLE employees ADD COLUMN customPermissions TEXT NOT NULL DEFAULT ''")
+        }
+    }
+
     val ALL: Array<Migration> = arrayOf(
-        // Add future migrations here.
-        // MIGRATION_2_3 is intentionally NOT in this list because v3 is the initial export
-        // for new installs — only devices with v2 installed would need it, and v2 was
-        // a development-only schema. Production rollout starts at v3.
+        MIGRATION_2_3,
+        MIGRATION_3_4,
+        MIGRATION_4_5
     )
 }

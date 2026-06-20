@@ -134,23 +134,23 @@ object DataModule {
     fun provideStoreRepository(impl: StoreRepositoryImpl): StoreRepository = impl
 
     @Provides @Singleton
-    fun provideCatalogImpl(dao: CatalogDao, syncDao: SyncQueueDao, clock: Clock): CatalogRepositoryImpl =
-        CatalogRepositoryImpl(dao, syncDao, clock)
+    fun provideCatalogImpl(dao: CatalogDao, syncOutboxDao: com.enterprise.pos.data.sync.SyncOutboxDao, clock: Clock): CatalogRepositoryImpl =
+        CatalogRepositoryImpl(dao, syncOutboxDao, clock)
 
     @Provides @Singleton
     fun provideOrderImpl(
         dao: OrderDao,
         tableDao: TableDao,
         paymentDao: com.enterprise.pos.data.db.dao.PaymentDao,
-        syncDao: SyncQueueDao,
+        syncOutboxDao: com.enterprise.pos.data.sync.SyncOutboxDao,
         auditLog: com.enterprise.pos.domain.repository.AuditLogRepository,
         cart: CartEngine,
         clock: Clock
-    ): OrderRepositoryImpl = OrderRepositoryImpl(dao, tableDao, paymentDao, syncDao, auditLog, cart, clock)
+    ): OrderRepositoryImpl = OrderRepositoryImpl(dao, tableDao, paymentDao, syncOutboxDao, auditLog, cart, clock)
 
     @Provides @Singleton
-    fun provideCustomerImpl(dao: CustomerDao, syncDao: SyncQueueDao, clock: Clock): CustomerRepositoryImpl =
-        CustomerRepositoryImpl(dao, syncDao, clock)
+    fun provideCustomerImpl(dao: CustomerDao, syncOutboxDao: com.enterprise.pos.data.sync.SyncOutboxDao, clock: Clock): CustomerRepositoryImpl =
+        CustomerRepositoryImpl(dao, syncOutboxDao, clock)
 
     @Provides @Singleton
     fun provideEmployeeImpl(dao: EmployeeDao, clock: Clock): EmployeeRepositoryImpl =
@@ -164,15 +164,15 @@ object DataModule {
     fun provideReservationRepository(impl: ReservationRepositoryImpl): ReservationRepository = impl
 
     @Provides @Singleton
-    fun provideReservationImpl(dao: ReservationDao, tableDao: TableDao, syncDao: SyncQueueDao, clock: Clock): ReservationRepositoryImpl =
-        ReservationRepositoryImpl(dao, tableDao, syncDao, clock)
+    fun provideReservationImpl(dao: ReservationDao, tableDao: TableDao, syncOutboxDao: com.enterprise.pos.data.sync.SyncOutboxDao, clock: Clock): ReservationRepositoryImpl =
+        ReservationRepositoryImpl(dao, tableDao, syncOutboxDao, clock)
 
     @Provides @Singleton
     fun provideGiftCardRepository(impl: GiftCardRepositoryImpl): GiftCardRepository = impl
 
     @Provides @Singleton
-    fun provideGiftCardImpl(dao: GiftCardDao, syncDao: SyncQueueDao, clock: Clock): GiftCardRepositoryImpl =
-        GiftCardRepositoryImpl(dao, syncDao, clock)
+    fun provideGiftCardImpl(dao: GiftCardDao, syncOutboxDao: com.enterprise.pos.data.sync.SyncOutboxDao, clock: Clock): GiftCardRepositoryImpl =
+        GiftCardRepositoryImpl(dao, syncOutboxDao, clock)
 
     @Provides @Singleton
     fun providePromotionRepository(impl: PromotionRepositoryImpl): PromotionRepository = impl
@@ -188,8 +188,8 @@ object DataModule {
     fun provideShiftImpl(
         shiftDao: ShiftDao, orderDao: OrderDao, paymentDao: PaymentDao,
         tipLogDao: TipLogDao, zReportDao: ZReportDao, auditDao: AuditLogDao,
-        syncDao: SyncQueueDao, clock: Clock
-    ): ShiftRepositoryImpl = ShiftRepositoryImpl(shiftDao, orderDao, paymentDao, tipLogDao, zReportDao, auditDao, syncDao, clock)
+        syncOutboxDao: com.enterprise.pos.data.sync.SyncOutboxDao, clock: Clock
+    ): ShiftRepositoryImpl = ShiftRepositoryImpl(shiftDao, orderDao, paymentDao, tipLogDao, zReportDao, auditDao, syncOutboxDao, clock)
 
     @Provides @Singleton
     fun provideInventoryManagementRepository(impl: InventoryManagementRepositoryImpl): InventoryManagementRepository = impl
@@ -197,8 +197,8 @@ object DataModule {
     @Provides @Singleton
     fun provideInventoryMgmtImpl(
         catalogDao: CatalogDao, adjustmentDao: InventoryAdjustmentDao,
-        transferDao: InventoryTransferDao, syncDao: SyncQueueDao, clock: Clock
-    ): InventoryManagementRepositoryImpl = InventoryManagementRepositoryImpl(catalogDao, adjustmentDao, transferDao, syncDao, clock)
+        transferDao: InventoryTransferDao, syncOutboxDao: com.enterprise.pos.data.sync.SyncOutboxDao, clock: Clock
+    ): InventoryManagementRepositoryImpl = InventoryManagementRepositoryImpl(catalogDao, adjustmentDao, transferDao, syncOutboxDao, clock)
 
     @Provides @Singleton
     fun provideReturnsRepository(impl: ReturnsRepositoryImpl): ReturnsRepository = impl
@@ -206,8 +206,8 @@ object DataModule {
     @Provides @Singleton
     fun provideReturnsImpl(
         returnDao: ReturnDao, orderDao: OrderDao, paymentDao: PaymentDao,
-        auditDao: AuditLogDao, syncDao: SyncQueueDao, clock: Clock
-    ): ReturnsRepositoryImpl = ReturnsRepositoryImpl(returnDao, orderDao, paymentDao, auditDao, syncDao, clock)
+        auditDao: AuditLogDao, syncOutboxDao: com.enterprise.pos.data.sync.SyncOutboxDao, clock: Clock
+    ): ReturnsRepositoryImpl = ReturnsRepositoryImpl(returnDao, orderDao, paymentDao, auditDao, syncOutboxDao, clock)
 
     @Provides @Singleton
     fun provideAuditLogRepository(impl: AuditLogRepositoryImpl): AuditLogRepository = impl
@@ -222,8 +222,8 @@ object DataModule {
     @Provides @Singleton
     fun provideAnalyticsImpl(
         orderDao: OrderDao, catalogDao: CatalogDao, employeeDao: EmployeeDao,
-        paymentDao: PaymentDao, syncDao: SyncQueueDao, clock: Clock
-    ): AnalyticsRepositoryImpl = AnalyticsRepositoryImpl(orderDao, catalogDao, employeeDao, paymentDao, syncDao, clock)
+        paymentDao: PaymentDao, syncOutboxDao: com.enterprise.pos.data.sync.SyncOutboxDao, clock: Clock
+    ): AnalyticsRepositoryImpl = AnalyticsRepositoryImpl(orderDao, catalogDao, employeeDao, paymentDao, syncOutboxDao, clock)
 
     @Provides @Singleton
     fun provideMigrationRepository(impl: MigrationRepositoryImpl): MigrationRepository = impl

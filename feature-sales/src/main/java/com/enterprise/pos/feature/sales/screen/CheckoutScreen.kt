@@ -25,14 +25,13 @@ import com.enterprise.pos.feature.sales.state.CheckoutViewModel
 @Composable
 fun CheckoutScreen(
     orderId: OrderId,
-    amountDue: Money,
     employeeId: EmployeeId,
     onComplete: () -> Unit,
     onCancel: () -> Unit,
     viewModel: CheckoutViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    LaunchedEffect(orderId, amountDue) { viewModel.loadOrder(orderId, amountDue) }
+    LaunchedEffect(orderId) { viewModel.loadOrder(orderId) }
 
     LaunchedEffect(state.result) {
         if (state.result != null) {

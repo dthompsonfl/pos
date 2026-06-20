@@ -44,7 +44,7 @@ import kotlinx.serialization.builtins.serializer
 
 class CatalogRepositoryImpl(
     private val dao: CatalogDao,
-    private val syncDao: SyncQueueDao,
+    private val syncOutboxDao: com.enterprise.pos.data.sync.SyncOutboxDao,
     private val clock: Clock = SystemClock
 ) : CatalogRepository {
 
@@ -79,27 +79,81 @@ class CatalogRepositoryImpl(
         dao.search(query).map { e -> e.toDomain(dao.variantsFor(e.id).map { v -> v.toDomain() }) }
     }
 
-    override suspend fun upsertProduct(product: com.enterprise.pos.domain.model.Product): Result<com.enterprise.pos.domain.model.Product> = Result.catching {
+    override suspend fun upsertProduct(storeId: StoreId, product: com.enterprise.pos.domain.model.Product): Result<com.enterprise.pos.domain.model.Product> = Result.catching {
         val now = clock.now()
         dao.upsertProduct(product.toEntity(now))
         dao.upsertVariants(product.variants.map { it.toEntity(product.id) })
-        enqueueSync("products", product.id.value, "UPSERT")
+        syncOutboxDao.enqueue(storeId = storeId, entityType = "products", entityId = product.id.value, operation = "UPSERT", createdAt = now)
         product
     }
 
     override suspend fun adjustInventory(storeId: StoreId, variantId: VariantId, delta: Int, reason: String): Result<com.enterprise.pos.domain.model.InventorySnapshot> = Result.catching {
         val updated = dao.adjustInventory(variantId.value, storeId.value, delta)
-        enqueueSync("inventory", "${variantId.value}|${storeId.value}", "UPSERT")
+        syncOutboxDao.enqueue(storeId = storeId, entityType = "inventory", entityId = "${variantId.value}|${storeId.value}", operation = "UPSERT", createdAt = clock.now())
         updated.toDomain()
     }
 
-    override suspend fun setAvailable(productId: ProductId, available: Boolean): Result<Unit> = Result.catching {
+    override suspend fun setAvailable(storeId: StoreId, productId: ProductId, available: Boolean): Result<Unit> = Result.catching {
         dao.setAvailable(productId.value, available)
-        enqueueSync("products", productId.value, "UPSERT")
+        syncOutboxDao.enqueue(storeId = storeId, entityType = "products", entityId = productId.value, operation = "UPSERT", createdAt = clock.now())
     }
 
-    private suspend fun enqueueSync(table: String, id: String, op: String) {
-        syncDao.enqueue(SyncQueueEntity(tableName = table, recordId = id, operation = op, payloadJson = "{}", enqueuedAt = clock.now()))
+    override fun observeCategory(categoryId: CategoryId): Flow<com.enterprise.pos.domain.model.Category?> =
+        dao.observeCategory(categoryId.value).map { it?.toDomain() }
+
+    override suspend fun getCategory(categoryId: CategoryId): Result<com.enterprise.pos.domain.model.Category?> = Result.catching {
+        dao.getCategory(categoryId.value)?.toDomain()
+    }
+
+    override suspend fun upsertCategory(category: com.enterprise.pos.domain.model.Category): Result<com.enterprise.pos.domain.model.Category> = Result.catching {
+        dao.upsertCategory(category.toEntity())
+        category
+    }
+
+    override suspend fun deleteCategory(categoryId: CategoryId): Result<Unit> = Result.catching {
+        dao.deleteCategory(categoryId.value)
+    }
+
+    override suspend fun deleteProduct(storeId: StoreId, productId: ProductId): Result<Unit> = Result.catching {
+        dao.deleteProduct(productId.value)
+        syncOutboxDao.enqueue(storeId = storeId, entityType = "products", entityId = productId.value, operation = "DELETE", createdAt = clock.now())
+    }
+
+    override fun observeModifierGroups(): Flow<List<com.enterprise.pos.domain.model.ModifierGroup>> =
+        dao.observeModifierGroups().map { it.map { e -> e.toDomain() } }
+
+    override fun observeModifierGroup(id: com.enterprise.pos.core.ModifierGroupId): Flow<com.enterprise.pos.domain.model.ModifierGroup?> =
+        dao.observeModifierGroup(id.value).map { it?.toDomain() }
+
+    override suspend fun getModifierGroup(id: com.enterprise.pos.core.ModifierGroupId): Result<com.enterprise.pos.domain.model.ModifierGroup?> = Result.catching {
+        dao.getModifierGroup(id.value)?.toDomain()
+    }
+
+    override suspend fun upsertModifierGroup(storeId: StoreId, modifierGroup: com.enterprise.pos.domain.model.ModifierGroup): Result<com.enterprise.pos.domain.model.ModifierGroup> = Result.catching {
+        val now = clock.now()
+        dao.upsertModifierGroup(modifierGroup.toEntity(now))
+        syncOutboxDao.enqueue(storeId = storeId, entityType = "modifier_groups", entityId = modifierGroup.id.value, operation = "UPSERT", createdAt = now)
+        modifierGroup
+    }
+
+    override suspend fun deleteModifierGroup(storeId: StoreId, id: com.enterprise.pos.core.ModifierGroupId): Result<Unit> = Result.catching {
+        dao.deleteModifierGroup(id.value)
+        syncOutboxDao.enqueue(storeId = storeId, entityType = "modifier_groups", entityId = id.value, operation = "DELETE", createdAt = clock.now())
+    }
+
+    override suspend fun upsertInventory(storeId: StoreId, inventory: com.enterprise.pos.domain.model.InventorySnapshot): Result<com.enterprise.pos.domain.model.InventorySnapshot> = Result.catching {
+        val entity = com.enterprise.pos.data.db.entity.InventoryEntity(
+            variantId = inventory.variantId.value,
+            storeId = storeId.value,
+            onHand = inventory.onHand,
+            committed = inventory.committed,
+            lowStockThreshold = inventory.lowStockThreshold,
+            reorderPoint = inventory.reorderPoint,
+            updatedAt = clock.now()
+        )
+        dao.upsertInventory(entity)
+        syncOutboxDao.enqueue(storeId = storeId, entityType = "inventory", entityId = "${inventory.variantId.value}|${storeId.value}", operation = "UPSERT", createdAt = clock.now())
+        entity.toDomain()
     }
 }
 
@@ -107,7 +161,7 @@ class OrderRepositoryImpl(
     private val orderDao: OrderDao,
     private val tableDao: TableDao,
     private val paymentDao: com.enterprise.pos.data.db.dao.PaymentDao,
-    private val syncDao: SyncQueueDao,
+    private val syncOutboxDao: com.enterprise.pos.data.sync.SyncOutboxDao,
     private val auditLog: com.enterprise.pos.domain.repository.AuditLogRepository,
     private val cartEngine: com.enterprise.pos.domain.service.CartEngine,
     private val clock: Clock = SystemClock
@@ -230,9 +284,8 @@ class OrderRepositoryImpl(
         for (line in updatedOrder.lines.filter { it.lineType == com.enterprise.pos.domain.model.OrderLineType.ITEM }) {
             val variantId = line.variantId ?: continue
             try {
-                // catalogDao is not in scope here; in production, inject InventoryManagementRepository
-                // and call adjust() with delta = -line.quantity.asInt and reason = RECEIVED.
-                // For now, log the intent via audit.
+                dao.adjustInventory(variantId.value, current.storeId.value, -line.quantity.asInt)
+                syncOutboxDao.enqueue(storeId = current.storeId, entityType = "inventory", entityId = "${variantId.value}|${current.storeId.value}", operation = "UPSERT", createdAt = now)
             } catch (t: Throwable) {
                 // Inventory decrement failure does NOT fail the payment — it's a separate concern.
                 // Log to audit so a manager can reconcile.
@@ -274,8 +327,8 @@ class OrderRepositoryImpl(
         }
 
         // 5. Enqueue sync events
-        syncDao.enqueue(SyncQueueEntity(tableName = "payments", recordId = payment.id.value, operation = "UPSERT", payloadJson = "{}", enqueuedAt = now))
-        syncDao.enqueue(SyncQueueEntity(tableName = "orders", recordId = orderId.value, operation = "UPSERT", payloadJson = "{}", enqueuedAt = now))
+        syncOutboxDao.enqueue(storeId = current.storeId, registerId = current.registerId.value, employeeId = employeeId.value, entityType = "payments", entityId = payment.id.value, operation = "UPSERT", createdAt = now)
+        syncOutboxDao.enqueue(storeId = current.storeId, registerId = current.registerId.value, employeeId = employeeId.value, entityType = "orders", entityId = orderId.value, operation = "UPSERT", createdAt = now)
 
         updatedOrder
     }
@@ -312,6 +365,26 @@ class OrderRepositoryImpl(
         val updatedOrder = cartEngine.recordRefund(current, refund, now)
         orderDao.upsert(updatedOrder.toEntity())
 
+        // Restock inventory for refunded items
+        for (line in updatedOrder.lines.filter { it.lineType == com.enterprise.pos.domain.model.OrderLineType.ITEM }) {
+            val variantId = line.variantId ?: continue
+            try {
+                dao.adjustInventory(variantId.value, current.storeId.value, line.quantity.asInt)
+                syncOutboxDao.enqueue(storeId = current.storeId, entityType = "inventory", entityId = "${variantId.value}|${current.storeId.value}", operation = "UPSERT", createdAt = now)
+            } catch (t: Throwable) {
+                auditLog.logAction(
+                    storeId = updatedOrder.storeId,
+                    registerId = updatedOrder.registerId,
+                    employeeId = employeeId,
+                    employeeName = "",
+                    action = com.enterprise.pos.domain.model.AuditAction.INVENTORY_ADJUSTED,
+                    entityType = "Variant",
+                    entityId = variantId.value,
+                    reason = "Auto-restock failed for refund ${orderId.value}: ${t.message}"
+                )
+            }
+        }
+
         auditLog.logAction(
             storeId = updatedOrder.storeId,
             registerId = updatedOrder.registerId,
@@ -324,8 +397,8 @@ class OrderRepositoryImpl(
             afterJson = "{\"amount_minor\":${refund.amount.minorUnits},\"reason\":\"$reason\"}"
         )
 
-        syncDao.enqueue(SyncQueueEntity(tableName = "payments", recordId = refund.id.value, operation = "UPSERT", payloadJson = "{}", enqueuedAt = now))
-        syncDao.enqueue(SyncQueueEntity(tableName = "orders", recordId = orderId.value, operation = "UPSERT", payloadJson = "{}", enqueuedAt = now))
+        syncOutboxDao.enqueue(storeId = current.storeId, registerId = current.registerId.value, employeeId = employeeId.value, entityType = "payments", entityId = refund.id.value, operation = "UPSERT", createdAt = now)
+        syncOutboxDao.enqueue(storeId = current.storeId, registerId = current.registerId.value, employeeId = employeeId.value, entityType = "orders", entityId = orderId.value, operation = "UPSERT", createdAt = now)
 
         updatedOrder
     }
@@ -347,7 +420,7 @@ class OrderRepositoryImpl(
             entityId = orderId.value,
             reason = reason
         )
-        syncDao.enqueue(SyncQueueEntity(tableName = "orders", recordId = orderId.value, operation = "UPSERT", payloadJson = "{}", enqueuedAt = now))
+        syncOutboxDao.enqueue(storeId = current.storeId, registerId = current.registerId.value, employeeId = employeeId.value, entityType = "orders", entityId = orderId.value, operation = "UPSERT", createdAt = now)
         voided
     }
 
@@ -357,7 +430,7 @@ class OrderRepositoryImpl(
         val taxLines = order.taxLines.map { it.toEntity(order.id) }
         val discounts = order.discounts.map { it.toEntity(order.id) }
         orderDao.replaceOrderChildren(order.id.value, lines, taxLines, discounts)
-        syncDao.enqueue(SyncQueueEntity(tableName = "orders", recordId = order.id.value, operation = "UPSERT", payloadJson = "{}", enqueuedAt = clock.now()))
+        syncOutboxDao.enqueue(storeId = order.storeId, registerId = order.registerId.value, employeeId = order.employeeId.value, entityType = "orders", entityId = order.id.value, operation = "UPSERT", createdAt = clock.now())
     }
 
     private suspend fun hydrate(e: com.enterprise.pos.data.db.entity.OrderEntity): Order {
@@ -371,7 +444,7 @@ class OrderRepositoryImpl(
 
 class CustomerRepositoryImpl(
     private val dao: CustomerDao,
-    private val syncDao: SyncQueueDao,
+    private val syncOutboxDao: com.enterprise.pos.data.sync.SyncOutboxDao,
     private val clock: Clock = SystemClock
 ) : CustomerRepository {
 
@@ -391,8 +464,13 @@ class CustomerRepositoryImpl(
 
     override suspend fun upsert(customer: com.enterprise.pos.domain.model.Customer): Result<com.enterprise.pos.domain.model.Customer> = Result.catching {
         dao.upsert(customer.toEntity(clock.now()))
-        syncDao.enqueue(SyncQueueEntity(tableName = "customers", recordId = customer.id.value, operation = "UPSERT", payloadJson = "{}", enqueuedAt = clock.now()))
+        syncOutboxDao.enqueue(storeId = StoreId("global"), entityType = "customers", entityId = customer.id.value, operation = "UPSERT", createdAt = clock.now())
         customer
+    }
+
+    override suspend fun delete(id: CustomerId): Result<Unit> = Result.catching {
+        dao.delete(id.value)
+        syncOutboxDao.enqueue(storeId = StoreId("global"), entityType = "customers", entityId = id.value, operation = "DELETE", createdAt = clock.now())
     }
 
     override suspend fun addLoyaltyPoints(id: CustomerId, points: Int): Result<com.enterprise.pos.domain.model.Customer> = Result.catching {
@@ -416,29 +494,21 @@ class EmployeeRepositoryImpl(
     override fun observeEmployees(): Flow<List<com.enterprise.pos.domain.model.Employee>> =
         dao.observeActive().map { list -> list.map { it.toDomain() } }
 
+    override fun observeEmployee(id: EmployeeId): Flow<com.enterprise.pos.domain.model.Employee?> =
+        dao.observeById(id.value).map { it?.toDomain() }
+
     override suspend fun login(pin: String): Result<com.enterprise.pos.domain.model.Employee> = Result.catching {
-        // Iterate all active employees and verify PIN hash with constant-time comparison.
-        // We do NOT query by PIN directly — hashes have unique salts and cannot be indexed.
         val candidates = dao.allActive()
         val now = clock.now()
         var matched: com.enterprise.pos.data.db.entity.EmployeeEntity? = null
         for (e in candidates) {
-            // Locked-out check
-            if (e.lockedUntil != null && e.lockedUntil > now) {
-                continue
-            }
+            if (e.lockedUntil != null && e.lockedUntil > now) continue
             if (com.enterprise.pos.domain.security.PinHasher.verify(pin, e.pinHash)) {
                 matched = e
                 break
             }
         }
-        if (matched == null) {
-            // Record failed attempt against ALL candidates? No — we don't know which employee.
-            // In production, login should be by employeeId + pin so we can track per-employee.
-            // For this skeleton, we just reject.
-            throw SecurityException("Invalid PIN")
-        }
-        // Reset failed attempts and record successful login
+        if (matched == null) throw SecurityException("Invalid PIN")
         val updated = matched.copy(failedLoginAttempts = 0, lockedUntil = null, lastLoginAt = now)
         dao.upsert(updated)
         updated.toDomain()
@@ -455,6 +525,12 @@ class EmployeeRepositoryImpl(
 
     override suspend fun deactivate(id: EmployeeId): Result<Unit> = Result.catching {
         dao.deactivate(id.value)
+    }
+
+    override suspend fun resetPin(id: EmployeeId, newPin: String): Result<com.enterprise.pos.domain.model.Employee> = Result.catching {
+        val newHash = com.enterprise.pos.domain.security.PinHasher.hash(newPin)
+        dao.resetPin(id.value, newHash)
+        dao.get(id.value)!!.toDomain()
     }
 
     override suspend fun permissions(role: com.enterprise.pos.domain.model.EmployeeRole): Result<com.enterprise.pos.domain.model.RolePermissions> =

@@ -41,6 +41,7 @@ interface ReservationRepository {
     suspend fun setStatus(id: Id<com.enterprise.pos.domain.model.ReservationTag>, status: ReservationStatus): Result<Unit>
     suspend fun seat(id: Id<com.enterprise.pos.domain.model.ReservationTag>, tableId: TableId): Result<Unit>
     suspend fun cancel(id: Id<com.enterprise.pos.domain.model.ReservationTag>, reason: String): Result<Unit>
+    suspend fun checkTableAvailability(storeId: StoreId, date: Long, partySize: Int): Result<List<com.enterprise.pos.domain.model.RestaurantTable>>
 }
 
 interface GiftCardRepository {
@@ -85,6 +86,22 @@ interface InventoryManagementRepository {
     suspend fun reorder(variantId: com.enterprise.pos.core.VariantId, storeId: StoreId, qty: Int): Result<Unit>
     suspend fun reorderAll(storeId: StoreId): Result<Int> // returns # items reordered
     suspend fun valuation(storeId: StoreId): Result<Money>
+
+    // Detail & history
+    suspend fun getInventoryItem(variantId: com.enterprise.pos.core.VariantId, storeId: StoreId): Result<com.enterprise.pos.domain.model.InventoryItem?>
+    fun observeStockMovements(storeId: StoreId, variantId: com.enterprise.pos.core.VariantId): Flow<List<com.enterprise.pos.domain.model.StockMovement>>
+    suspend fun setReorderPoint(variantId: com.enterprise.pos.core.VariantId, storeId: StoreId, point: Int, qty: Int): Result<Unit>
+
+    // Suppliers & purchase orders
+    suspend fun getSupplier(id: Id<com.enterprise.pos.domain.model.SupplierTag>): Result<com.enterprise.pos.domain.model.Supplier?>
+    fun observeSuppliers(storeId: StoreId): Flow<List<com.enterprise.pos.domain.model.Supplier>>
+    suspend fun getSupplierPerformance(supplierId: Id<com.enterprise.pos.domain.model.SupplierTag>): Result<com.enterprise.pos.domain.model.SupplierPerformance>
+    suspend fun observePurchaseOrders(storeId: StoreId, supplierId: Id<com.enterprise.pos.domain.model.SupplierTag>?): Flow<List<com.enterprise.pos.domain.model.PurchaseOrder>>
+    suspend fun getPurchaseOrder(id: Id<com.enterprise.pos.domain.model.PurchaseOrderTag>): Result<com.enterprise.pos.domain.model.PurchaseOrder?>
+    suspend fun upsertPurchaseOrder(po: com.enterprise.pos.domain.model.PurchaseOrder): Result<com.enterprise.pos.domain.model.PurchaseOrder>
+    suspend fun sendPurchaseOrder(id: Id<com.enterprise.pos.domain.model.PurchaseOrderTag>): Result<com.enterprise.pos.domain.model.PurchaseOrder>
+    suspend fun receivePurchaseOrder(id: Id<com.enterprise.pos.domain.model.PurchaseOrderTag>): Result<com.enterprise.pos.domain.model.PurchaseOrder>
+    suspend fun cancelPurchaseOrder(id: Id<com.enterprise.pos.domain.model.PurchaseOrderTag>): Result<com.enterprise.pos.domain.model.PurchaseOrder>
 }
 
 interface ReturnsRepository {

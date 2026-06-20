@@ -101,7 +101,7 @@ import java.util.UUID
 class ReservationRepositoryImpl(
     private val dao: ReservationDao,
     private val tableDao: TableDao,
-    private val syncDao: SyncQueueDao,
+    private val syncOutboxDao: com.enterprise.pos.data.sync.SyncOutboxDao,
     private val clock: Clock = SystemClock
 ) : ReservationRepository {
     override fun observeReservations(storeId: StoreId, date: Long): Flow<List<Reservation>> {
@@ -123,7 +123,7 @@ class ReservationRepositoryImpl(
 
     override suspend fun upsert(r: Reservation): Result<Reservation> = Result.catching {
         dao.upsert(r.toEntity())
-        syncDao.enqueue(com.enterprise.pos.data.db.entity.SyncQueueEntity(tableName = "reservations", recordId = r.id.value, operation = "UPSERT", payloadJson = "{}", enqueuedAt = clock.now()))
+        syncOutboxDao.enqueue(storeId = r.storeId, entityType = "reservations", entityId = r.id.value, operation = "UPSERT", createdAt = clock.now())
         r
     }
 
@@ -143,7 +143,7 @@ class ReservationRepositoryImpl(
 
 class GiftCardRepositoryImpl(
     private val dao: GiftCardDao,
-    private val syncDao: SyncQueueDao,
+    private val syncOutboxDao: com.enterprise.pos.data.sync.SyncOutboxDao,
     private val clock: Clock = SystemClock
 ) : GiftCardRepository {
 
@@ -180,7 +180,7 @@ class GiftCardRepositoryImpl(
             timestamp = now, employeeId = "system", type = GiftCardTxType.ISSUED.name
         )
         dao.logTransaction(tx)
-        syncDao.enqueue(com.enterprise.pos.data.db.entity.SyncQueueEntity(tableName = "gift_cards", recordId = id, operation = "UPSERT", payloadJson = "{}", enqueuedAt = now))
+        syncOutboxDao.enqueue(storeId = storeId, entityType = "gift_cards", entityId = id, operation = "UPSERT", createdAt = now)
         card
     }
 
@@ -275,7 +275,7 @@ class ShiftRepositoryImpl(
     private val tipLogDao: TipLogDao,
     private val zReportDao: ZReportDao,
     private val auditDao: AuditLogDao,
-    private val syncDao: SyncQueueDao,
+    private val syncOutboxDao: com.enterprise.pos.data.sync.SyncOutboxDao,
     private val clock: Clock = SystemClock
 ) : ShiftRepository {
 
@@ -305,7 +305,7 @@ class ShiftRepositoryImpl(
             reason = "Starting cash: ${startingCash.format()}", timestamp = now,
             ipAddress = null, deviceIdentifier = null
         ))
-        syncDao.enqueue(com.enterprise.pos.data.db.entity.SyncQueueEntity(tableName = "shifts", recordId = shift.id.value, operation = "UPSERT", payloadJson = "{}", enqueuedAt = now))
+        syncOutboxDao.enqueue(storeId = storeId, entityType = "shifts", entityId = shift.id.value, operation = "UPSERT", createdAt = now)
         shift
     }
 
@@ -410,7 +410,7 @@ class InventoryManagementRepositoryImpl(
     private val catalogDao: CatalogDao,
     private val adjustmentDao: InventoryAdjustmentDao,
     private val transferDao: InventoryTransferDao,
-    private val syncDao: SyncQueueDao,
+    private val syncOutboxDao: com.enterprise.pos.data.sync.SyncOutboxDao,
     private val clock: Clock = SystemClock
 ) : InventoryManagementRepository {
 
@@ -434,13 +434,13 @@ class InventoryManagementRepositoryImpl(
             )
         )
         catalogDao.adjustInventory(adjustment.variantId.value, adjustment.storeId.value, adjustment.delta)
-        syncDao.enqueue(com.enterprise.pos.data.db.entity.SyncQueueEntity(tableName = "inventory_adjustments", recordId = adjustment.id.value, operation = "UPSERT", payloadJson = "{}", enqueuedAt = clock.now()))
+        syncOutboxDao.enqueue(storeId = adjustment.storeId, entityType = "inventory_adjustments", entityId = adjustment.id.value, operation = "UPSERT", createdAt = clock.now())
         adjustment
     }
 
     override suspend fun createTransfer(transfer: InventoryTransfer): Result<InventoryTransfer> = Result.catching {
         transferDao.upsert(transfer.toEntity())
-        syncDao.enqueue(com.enterprise.pos.data.db.entity.SyncQueueEntity(tableName = "inventory_transfers", recordId = transfer.id.value, operation = "UPSERT", payloadJson = "{}", enqueuedAt = clock.now()))
+        syncOutboxDao.enqueue(storeId = transfer.fromStoreId, entityType = "inventory_transfers", entityId = transfer.id.value, operation = "UPSERT", createdAt = clock.now())
         transfer
     }
 
@@ -457,7 +457,7 @@ class InventoryManagementRepositoryImpl(
         updatedItems.forEach { line ->
             catalogDao.adjustInventory(line.variantId.value, transfer.toStoreId.value, line.receivedQuantity)
         }
-        syncDao.enqueue(com.enterprise.pos.data.db.entity.SyncQueueEntity(tableName = "inventory_transfers", recordId = transferId.value, operation = "UPSERT", payloadJson = "{}", enqueuedAt = now))
+        syncOutboxDao.enqueue(storeId = transfer.toStoreId, entityType = "inventory_transfers", entityId = transferId.value, operation = "UPSERT", createdAt = now)
         updated
     }
 
@@ -483,7 +483,7 @@ class ReturnsRepositoryImpl(
     private val orderDao: OrderDao,
     private val paymentDao: PaymentDao,
     private val auditDao: AuditLogDao,
-    private val syncDao: SyncQueueDao,
+    private val syncOutboxDao: com.enterprise.pos.data.sync.SyncOutboxDao,
     private val clock: Clock = SystemClock
 ) : ReturnsRepository {
 
@@ -511,7 +511,7 @@ class ReturnsRepositoryImpl(
         val ret = returnDao.get(returnId.value)?.toDomain() ?: throw IllegalArgumentException("Return not found")
         val updated = ret.copy(refundTenders = tenders, status = com.enterprise.pos.domain.model.ReturnStatus.COMPLETED)
         returnDao.upsert(updated.toEntity())
-        syncDao.enqueue(com.enterprise.pos.data.db.entity.SyncQueueEntity(tableName = "returns", recordId = returnId.value, operation = "UPSERT", payloadJson = "{}", enqueuedAt = clock.now()))
+        syncOutboxDao.enqueue(storeId = ret.storeId, entityType = "returns", entityId = returnId.value, operation = "UPSERT", createdAt = clock.now())
         updated
     }
 
@@ -561,7 +561,7 @@ class AnalyticsRepositoryImpl(
     private val catalogDao: CatalogDao,
     private val employeeDao: EmployeeDao,
     private val paymentDao: PaymentDao,
-    private val syncDao: SyncQueueDao,
+    private val syncOutboxDao: com.enterprise.pos.data.sync.SyncOutboxDao,
     private val clock: Clock = SystemClock
 ) : AnalyticsRepository {
 
@@ -622,7 +622,7 @@ class AnalyticsRepositoryImpl(
             .mapValues { (_, payments) -> Money.ofMinor(payments.sumOf { it.amountMinor }) }
         val diningMix = todayOrders.groupBy { it.diningMode.name }.mapValues { it.value.size }
         val lowStockCount = 0 // would query inventory
-        val pendingSyncCount = syncDao.observeCount().first()
+        val pendingSyncCount = syncOutboxDao.observePendingCount().first()
         val alerts = mutableListOf<DashboardAlert>()
         if (todaySales < yesterdaySales * BigDecimal.valueOf(0.8)) {
             alerts.add(DashboardAlert(AlertSeverity.WARNING, AlertCategory.REVENUE, "Sales Drop", "Today's sales are ${(1 - todaySales.minorUnits.toDouble() / yesterdaySales.minorUnits.coerceAtLeast(1)) * 100}% below yesterday", null, now))

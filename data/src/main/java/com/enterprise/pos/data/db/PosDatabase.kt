@@ -35,6 +35,7 @@ import com.enterprise.pos.data.db.entity.InventoryEntity
 import com.enterprise.pos.data.db.entity.InventoryTransferEntity
 import com.enterprise.pos.data.db.entity.LoyaltyRewardEntity
 import com.enterprise.pos.data.db.entity.MigrationJobEntity
+import com.enterprise.pos.data.db.entity.ModifierGroupEntity
 import com.enterprise.pos.data.db.entity.OrderEntity
 import com.enterprise.pos.data.db.entity.OrderLineEntity
 import com.enterprise.pos.data.db.entity.PaymentEntity
@@ -61,6 +62,7 @@ import com.enterprise.pos.data.db.entity.ZReportEntity
         ProductEntity::class,
         VariantEntity::class,
         InventoryEntity::class,
+        ModifierGroupEntity::class,
         OrderEntity::class,
         OrderLineEntity::class,
         TaxLineEntity::class,
@@ -88,8 +90,8 @@ import com.enterprise.pos.data.db.entity.ZReportEntity
         TipLogEntity::class,
         SyncOutboxEntity::class
     ],
-    version = 3,
-    exportSchema = false
+    version = 5,
+    exportSchema = true
 )
 abstract class PosDatabase : RoomDatabase() {
     abstract fun catalogDao(): CatalogDao

@@ -11,6 +11,7 @@ import com.enterprise.pos.data.db.entity.CustomerEntity
 import com.enterprise.pos.data.db.entity.DiscountEntity
 import com.enterprise.pos.data.db.entity.EmployeeEntity
 import com.enterprise.pos.data.db.entity.InventoryEntity
+import com.enterprise.pos.data.db.entity.ModifierGroupEntity
 import com.enterprise.pos.data.db.entity.OrderEntity
 import com.enterprise.pos.data.db.entity.OrderLineEntity
 import com.enterprise.pos.data.db.entity.PaymentEntity
@@ -28,7 +29,7 @@ interface CatalogDao {
     @Query("SELECT * FROM categories ORDER BY displayOrder ASC")
     fun observeCategories(): Flow<List<CategoryEntity>>
 
-    @Query("SELECT * FROM products WHERE categoryId = :categoryId OR :categoryId IS NULL ORDER BY name ASC")
+    @Query("SELECT * FROM products WHERE categoryId = :categoryId OR :categoryId IS NULL ORDER BY displayOrder ASC, name ASC")
     fun observeProducts(categoryId: String?): Flow<List<ProductEntity>>
 
     @Query("SELECT * FROM products WHERE id = :id")
@@ -81,6 +82,35 @@ interface CatalogDao {
         upsertInventory(updated)
         return updated
     }
+    @Query("SELECT * FROM categories WHERE id = :id")
+    fun observeCategory(id: String): Flow<CategoryEntity?>
+
+    @Query("SELECT * FROM categories WHERE id = :id")
+    suspend fun getCategory(id: String): CategoryEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertCategory(category: CategoryEntity)
+
+    @Query("DELETE FROM categories WHERE id = :id")
+    suspend fun deleteCategory(id: String)
+
+    @Query("DELETE FROM products WHERE id = :id")
+    suspend fun deleteProduct(id: String)
+
+    @Query("SELECT * FROM modifier_groups ORDER BY displayOrder ASC")
+    fun observeModifierGroups(): Flow<List<ModifierGroupEntity>>
+
+    @Query("SELECT * FROM modifier_groups WHERE id = :id")
+    fun observeModifierGroup(id: String): Flow<ModifierGroupEntity?>
+
+    @Query("SELECT * FROM modifier_groups WHERE id = :id")
+    suspend fun getModifierGroup(id: String): ModifierGroupEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertModifierGroup(modifierGroup: ModifierGroupEntity)
+
+    @Query("DELETE FROM modifier_groups WHERE id = :id")
+    suspend fun deleteModifierGroup(id: String)
 }
 
 @Dao
@@ -172,12 +202,18 @@ interface CustomerDao {
 
     @Query("UPDATE customers SET storeCreditMinor = storeCreditMinor + :deltaMinor, updatedAt = :now WHERE id = :id")
     suspend fun adjustStoreCredit(id: String, deltaMinor: Long, now: Long)
+
+    @Query("DELETE FROM customers WHERE id = :id")
+    suspend fun delete(id: String)
 }
 
 @Dao
 interface EmployeeDao {
     @Query("SELECT * FROM employees WHERE active = 1 ORDER BY name ASC")
     fun observeActive(): Flow<List<EmployeeEntity>>
+
+    @Query("SELECT * FROM employees WHERE id = :id")
+    fun observeById(id: String): Flow<EmployeeEntity?>
 
     /** All active employees — the repository iterates these to verify the PIN hash.
      *  PIN hashes cannot be queried directly because each has a unique salt. */
@@ -192,6 +228,9 @@ interface EmployeeDao {
 
     @Query("UPDATE employees SET active = 0 WHERE id = :id")
     suspend fun deactivate(id: String)
+
+    @Query("UPDATE employees SET pinHash = :newPinHash WHERE id = :id")
+    suspend fun resetPin(id: String, newPinHash: String)
 }
 
 @Dao

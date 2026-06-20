@@ -57,9 +57,11 @@ data class Product(
     val imageUrl: String? = null,
     val defaultVariantId: VariantId? = null,
     val variants: List<ProductVariant> = emptyList(),
+    val modifierGroupIds: List<ModifierGroupId> = emptyList(),
     val tags: List<String> = emptyList(),
     val trackInventory: Boolean = true,
     val isAvailable: Boolean = true,
+    val displayOrder: Int = 0,
     val kitchenRoutingKey: String? = null,
     val prepTimeMinutes: Int = 0
 ) {
@@ -80,3 +82,29 @@ data class InventorySnapshot(
     val isLow: Boolean get() = available <= lowStockThreshold
     val needsReorder: Boolean get() = available <= reorderPoint
 }
+
+@Serializable
+data class ModifierOption(
+    val id: String, // UUID within the group
+    val name: String,
+    val priceAdjustment: Money = Money.ZERO,
+    val isAvailable: Boolean = true
+)
+
+@Serializable
+data class ModifierGroup(
+    val id: ModifierGroupId,
+    val name: String,
+    val description: String = "",
+    val options: List<ModifierOption> = emptyList(),
+    val displayOrder: Int = 0,
+    val isRequired: Boolean = false,
+    val maxSelections: Int = 1,
+    val minSelections: Int = 0
+)
+
+@Serializable
+data class ProductModifierAssignment(
+    val productId: ProductId,
+    val modifierGroupId: ModifierGroupId
+)

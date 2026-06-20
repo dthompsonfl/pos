@@ -509,3 +509,108 @@ enum class AlertSeverity { INFO, WARNING, ERROR, CRITICAL }
 
 @Serializable
 enum class AlertCategory { INVENTORY, PAYMENT, SYNC, SECURITY, REVENUE, OPERATIONS }
+
+// ============================================================
+// SUPPLIERS & PURCHASE ORDERS
+// ============================================================
+
+@Serializable
+enum class PurchaseOrderStatus { DRAFT, SENT, PARTIAL, RECEIVED, CANCELLED }
+
+@Serializable
+data class PurchaseOrderLine(
+    val id: String,
+    val productId: com.enterprise.pos.core.ProductId,
+    val productName: String,
+    val quantity: Int,
+    val unitCost: Money,
+    val receivedQuantity: Int = 0
+) {
+    val total: Money get() = unitCost * quantity
+    val received: Boolean get() = receivedQuantity >= quantity
+}
+
+interface PurchaseOrderTag : IdTag
+
+@Serializable
+data class PurchaseOrder(
+    val id: Id<PurchaseOrderTag>,
+    val storeId: StoreId,
+    val supplierId: Id<SupplierTag>,
+    val supplierName: String,
+    val orderDate: Long,
+    val expectedDelivery: Long? = null,
+    val status: PurchaseOrderStatus = PurchaseOrderStatus.DRAFT,
+    val lines: List<PurchaseOrderLine> = emptyList(),
+    val notes: String? = null,
+    val shippingCost: Money = Money.ZERO,
+    val taxPercent: Percent = Percent.ZERO
+) {
+    val subtotal: Money get() = lines.fold(Money.ZERO) { acc, line -> acc + line.total }
+    val taxAmount: Money get() = taxPercent.of(subtotal)
+    val total: Money get() = subtotal + shippingCost + taxAmount
+}
+
+interface SupplierTag : IdTag
+
+@Serializable
+data class Supplier(
+    val id: Id<SupplierTag>,
+    val name: String,
+    val contactPerson: String? = null,
+    val email: String? = null,
+    val phone: String? = null,
+    val address: String? = null,
+    val paymentTerms: String? = null,
+    val leadTimeDays: Int = 0,
+    val active: Boolean = true
+)
+
+@Serializable
+data class SupplierPerformance(
+    val supplierId: Id<SupplierTag>,
+    val totalOrders: Int = 0,
+    val onTimeDeliveryRate: Double = 0.0,
+    val qualityRating: Double = 0.0,
+    val averageLeadTimeDays: Double = 0.0
+)
+
+// ============================================================
+// INVENTORY DETAIL & STOCK MOVEMENTS
+// ============================================================
+
+@Serializable
+data class InventoryItem(
+    val variantId: com.enterprise.pos.core.VariantId,
+    val storeId: StoreId,
+    val productName: String,
+    val sku: String,
+    val onHand: Int = 0,
+    val committed: Int = 0,
+    val available: Int = 0,
+    val reorderPoint: Int = 10,
+    val reorderQuantity: Int = 20,
+    val location: String? = null,
+    val supplierId: Id<SupplierTag>? = null,
+    val supplierName: String? = null,
+    val unitCost: Money? = null,
+    val lastCountedAt: Long? = null
+) {
+    val isLow: Boolean get() = available <= reorderPoint
+}
+
+@Serializable
+enum class StockMovementType { ADJUSTMENT, SALE, RECEIPT, RETURN, TRANSFER }
+
+@Serializable
+data class StockMovement(
+    val id: String,
+    val variantId: com.enterprise.pos.core.VariantId,
+    val storeId: StoreId,
+    val type: StockMovementType,
+    val quantity: Int,
+    val reason: String? = null,
+    val notes: String? = null,
+    val employeeName: String? = null,
+    val timestamp: Long
+)

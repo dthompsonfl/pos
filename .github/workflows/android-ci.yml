@@ -1,4 +1,4 @@
-name: CI
+name: Android CI
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [ main, develop ]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: android-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -62,7 +62,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results
+          name: android-test-results
           path: |
             **/build/test-results/**/*.xml
             **/build/reports/tests/**
@@ -71,8 +71,9 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: lint-reports
-          path: **/build/reports/lint-results-*.html
+          name: android-lint-reports
+          path: |
+            **/build/reports/lint-results-*.html
 
       - name: Upload APK
         uses: actions/upload-artifact@v4

@@ -183,6 +183,8 @@ data class TaxLine(
 data class Customer(
     val id: CustomerId,
     val name: String,
+    val firstName: String = "",
+    val lastName: String = "",
     val email: String? = null,
     val phone: String? = null,
     val loyaltyPoints: Int = 0,
@@ -192,6 +194,13 @@ data class Customer(
     val notes: String? = null,
     val birthday: String? = null,
     val address: String? = null,
+    val city: String? = null,
+    val state: String? = null,
+    val zip: String? = null,
+    val country: String? = null,
+    val tags: List<String> = emptyList(),
+    val group: String? = null,
+    val loyaltyNumber: String? = null,
     val dietaryRestrictions: List<String> = emptyList()
 )
 
@@ -199,12 +208,18 @@ data class Customer(
 data class Employee(
     val id: EmployeeId,
     val name: String,
+    val firstName: String = "",
+    val lastName: String = "",
     /** PBKDF2 hash of the PIN — NEVER the raw PIN. Format: `pbkdf2$iterations$saltHex$hashHex`. */
     val pinHash: String,
     val role: EmployeeRole,
     val active: Boolean = true,
     val email: String? = null,
     val phone: String? = null,
+    val hourlyRate: Money = Money.ZERO,
+    val hireDate: Long? = null,
+    val notes: String? = null,
+    val customPermissions: List<String> = emptyList(),
     val failedLoginAttempts: Int = 0,
     val lockedUntil: Long? = null,
     val lastLoginAt: Long? = null

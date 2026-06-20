@@ -74,6 +74,7 @@ interface CustomerRepository {
     suspend fun get(id: CustomerId): Result<Customer?>
     suspend fun search(query: String): Result<List<Customer>>
     suspend fun upsert(customer: Customer): Result<Customer>
+    suspend fun delete(id: CustomerId): Result<Unit>
     suspend fun addLoyaltyPoints(id: CustomerId, points: Int): Result<Customer>
     suspend fun adjustStoreCredit(id: CustomerId, delta: Money, reason: String): Result<Customer>
     suspend fun purchaseHistory(id: CustomerId): Result<List<Order>>
@@ -81,10 +82,12 @@ interface CustomerRepository {
 
 interface EmployeeRepository {
     fun observeEmployees(): Flow<List<com.enterprise.pos.domain.model.Employee>>
+    fun observeEmployee(id: EmployeeId): Flow<com.enterprise.pos.domain.model.Employee?>
     suspend fun login(pin: String): Result<com.enterprise.pos.domain.model.Employee>
     suspend fun get(id: EmployeeId): Result<com.enterprise.pos.domain.model.Employee?>
     suspend fun upsert(employee: com.enterprise.pos.domain.model.Employee): Result<com.enterprise.pos.domain.model.Employee>
     suspend fun deactivate(id: EmployeeId): Result<Unit>
+    suspend fun resetPin(id: EmployeeId, newPin: String): Result<com.enterprise.pos.domain.model.Employee>
     suspend fun permissions(role: com.enterprise.pos.domain.model.EmployeeRole): Result<com.enterprise.pos.domain.model.RolePermissions>
 }
 

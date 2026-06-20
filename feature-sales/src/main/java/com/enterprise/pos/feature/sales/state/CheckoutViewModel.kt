@@ -89,19 +89,19 @@ class CheckoutViewModel @Inject constructor(
         _state.value = _state.value.copy(availableProviders = router.availableProviders)
     }
 
-    fun loadOrder(orderId: OrderId, amount: Money) {
-        // Real implementation: pull live total from the order repository, not the caller's value.
+    fun loadOrder(orderId: OrderId) {
+        // Pull live total from the order repository.
         viewModelScope.launch {
             orders.getById(orderId)
                 .onSuccess { order ->
-                    val due = order?.grandTotal ?: amount
+                    val due = order?.grandTotal ?: Money.ZERO
                     _state.value = _state.value.copy(
                         amountDue = due,
                         originalTotal = due
                     )
                 }
                 .onFailure {
-                    _state.value = _state.value.copy(amountDue = amount, originalTotal = amount)
+                    _state.value = _state.value.copy(amountDue = Money.ZERO, originalTotal = Money.ZERO)
                 }
         }
     }

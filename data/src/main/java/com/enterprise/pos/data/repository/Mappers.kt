@@ -16,6 +16,7 @@ import com.enterprise.pos.data.db.entity.CustomerEntity
 import com.enterprise.pos.data.db.entity.DiscountEntity
 import com.enterprise.pos.data.db.entity.EmployeeEntity
 import com.enterprise.pos.data.db.entity.InventoryEntity
+import com.enterprise.pos.data.db.entity.ModifierGroupEntity
 import com.enterprise.pos.data.db.entity.OrderEntity
 import com.enterprise.pos.data.db.entity.OrderLineEntity
 import com.enterprise.pos.data.db.entity.PaymentEntity
@@ -34,6 +35,8 @@ import com.enterprise.pos.domain.model.DiningMode
 import com.enterprise.pos.domain.model.Employee
 import com.enterprise.pos.domain.model.EmployeeRole
 import com.enterprise.pos.domain.model.InventorySnapshot
+import com.enterprise.pos.domain.model.ModifierGroup
+import com.enterprise.pos.domain.model.ModifierOption
 import com.enterprise.pos.domain.model.Order
 import com.enterprise.pos.domain.model.OrderLine
 import com.enterprise.pos.domain.model.OrderLineType
@@ -49,6 +52,7 @@ import com.enterprise.pos.domain.model.TableStatus
 import com.enterprise.pos.domain.model.TaxCategory
 import com.enterprise.pos.domain.model.TaxLine
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 
@@ -58,6 +62,15 @@ object Mappers {
     fun CategoryEntity.toDomain() = Category(
         id = CategoryId(id), name = name, parentId = parentId?.let(::CategoryId),
         displayOrder = displayOrder, iconKey = iconKey, color = color
+    )
+
+    fun Category.toEntity() = CategoryEntity(
+        id = id.value,
+        name = name,
+        parentId = parentId?.value,
+        displayOrder = displayOrder,
+        iconKey = iconKey,
+        color = color
     )
 
     fun VariantEntity.toDomain() = com.enterprise.pos.domain.model.ProductVariant(
@@ -82,11 +95,56 @@ object Mappers {
         imageUrl = imageUrl,
         defaultVariantId = defaultVariantId?.let(::VariantId),
         variants = variants,
+        modifierGroupIds = if (modifierGroupsJson.isBlank()) emptyList()
+            else modifierGroupsJson.split(",").map { com.enterprise.pos.core.ModifierGroupId(it) },
         tags = if (tags.isBlank()) emptyList() else tags.split(","),
         trackInventory = trackInventory,
         isAvailable = isAvailable,
         kitchenRoutingKey = kitchenRoutingKey,
         prepTimeMinutes = prepTimeMinutes
+    )
+
+    fun ModifierGroupEntity.toDomain() = ModifierGroup(
+        id = com.enterprise.pos.core.ModifierGroupId(id),
+        name = name,
+        description = description,
+        options = if (optionsJson.isBlank()) emptyList()
+            else json.decodeFromString(ListSerializer(ModifierOption.serializer()), optionsJson),
+        displayOrder = displayOrder,
+        isRequired = isRequired,
+        maxSelections = maxSelections,
+        minSelections = minSelections
+    )
+
+    fun ModifierGroup.toEntity(now: Long = System.currentTimeMillis()) = ModifierGroupEntity(
+        id = id.value,
+        name = name,
+        description = description,
+        optionsJson = json.encodeToString(ListSerializer(ModifierOption.serializer()), options),
+        displayOrder = displayOrder,
+        isRequired = isRequired,
+        maxSelections = maxSelections,
+        minSelections = minSelections,
+        updatedAt = now
+    )
+
+    fun Product.toEntity(now: Long = System.currentTimeMillis()) = ProductEntity(
+        id = id.value,
+        name = name,
+        description = description,
+        categoryId = categoryId.value,
+        type = type.name,
+        taxCategory = taxCategory.name,
+        ageRestriction = ageRestriction.name,
+        imageUrl = imageUrl,
+        defaultVariantId = defaultVariantId?.value,
+        tags = tags.joinToString(","),
+        trackInventory = trackInventory,
+        isAvailable = isAvailable,
+        kitchenRoutingKey = kitchenRoutingKey,
+        prepTimeMinutes = prepTimeMinutes,
+        updatedAt = now,
+        modifierGroupsJson = modifierGroupIds.joinToString(",") { it.value }
     )
 
     fun InventoryEntity.toDomain() = InventorySnapshot(
@@ -223,6 +281,8 @@ object Mappers {
     fun CustomerEntity.toDomain(): Customer = Customer(
         id = CustomerId(id),
         name = name,
+        firstName = firstName ?: "",
+        lastName = lastName ?: "",
         email = email,
         phone = phone,
         loyaltyPoints = loyaltyPoints,
@@ -231,6 +291,13 @@ object Mappers {
         notes = notes,
         birthday = birthday,
         address = address,
+        city = city,
+        state = state,
+        zip = zip,
+        country = country,
+        tags = if (tags.isBlank()) emptyList() else tags.split(","),
+        group = group,
+        loyaltyNumber = loyaltyNumber,
         dietaryRestrictions = if (dietaryRestrictions.isBlank()) emptyList() else dietaryRestrictions.split(","),
         createdAt = createdAt
     )
@@ -238,6 +305,8 @@ object Mappers {
     fun Customer.toEntity(now: Long): CustomerEntity = CustomerEntity(
         id = id.value,
         name = name,
+        firstName = firstName.ifBlank { null },
+        lastName = lastName.ifBlank { null },
         email = email,
         phone = phone,
         loyaltyPoints = loyaltyPoints,
@@ -246,6 +315,13 @@ object Mappers {
         notes = notes,
         birthday = birthday,
         address = address,
+        city = city,
+        state = state,
+        zip = zip,
+        country = country,
+        tags = tags.joinToString(","),
+        group = group,
+        loyaltyNumber = loyaltyNumber,
         dietaryRestrictions = dietaryRestrictions.joinToString(","),
         createdAt = createdAt,
         updatedAt = now
@@ -254,11 +330,17 @@ object Mappers {
     fun EmployeeEntity.toDomain(): Employee = Employee(
         id = EmployeeId(id),
         name = name,
+        firstName = firstName ?: "",
+        lastName = lastName ?: "",
         pinHash = pinHash,
         role = runCatching { EmployeeRole.valueOf(role) }.getOrDefault(EmployeeRole.CASHIER),
         active = active,
         email = email,
         phone = phone,
+        hourlyRate = Money.ofMinor(hourlyRateMinor),
+        hireDate = hireDate,
+        notes = notes,
+        customPermissions = if (customPermissions.isBlank()) emptyList() else customPermissions.split(","),
         failedLoginAttempts = failedLoginAttempts,
         lockedUntil = lockedUntil,
         lastLoginAt = lastLoginAt
@@ -267,11 +349,17 @@ object Mappers {
     fun Employee.toEntity(now: Long): EmployeeEntity = EmployeeEntity(
         id = id.value,
         name = name,
+        firstName = firstName.ifBlank { null },
+        lastName = lastName.ifBlank { null },
         pinHash = pinHash,
         role = role.name,
         active = active,
         email = email,
         phone = phone,
+        hourlyRateMinor = hourlyRate.minorUnits,
+        hireDate = hireDate,
+        notes = notes,
+        customPermissions = customPermissions.joinToString(","),
         createdAt = now,
         failedLoginAttempts = failedLoginAttempts,
         lockedUntil = lockedUntil,

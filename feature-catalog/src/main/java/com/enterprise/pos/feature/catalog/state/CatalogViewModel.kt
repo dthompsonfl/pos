@@ -6,9 +6,11 @@ import com.enterprise.pos.core.CategoryId
 import com.enterprise.pos.core.Logger
 import com.enterprise.pos.core.NoopLogger
 import com.enterprise.pos.core.ProductId
+import com.enterprise.pos.core.StoreId
 import com.enterprise.pos.domain.model.Category
 import com.enterprise.pos.domain.model.Product
 import com.enterprise.pos.domain.repository.CatalogRepository
+import com.enterprise.pos.domain.repository.StoreRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,15 +26,25 @@ data class CatalogState(
     val products: List<Product> = emptyList(),
     val query: String = "",
     val isLoading: Boolean = false,
+    val storeId: StoreId? = null,
 )
 
 @HiltViewModel
 class CatalogViewModel @Inject constructor(
     private val catalog: CatalogRepository,
+    private val storeRepo: StoreRepository,
     @Suppress("unused") private val logger: Logger = NoopLogger
 ) : ViewModel() {
     private val _state = MutableStateFlow(CatalogState(isLoading = true))
     val state: StateFlow<CatalogState> = _state.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            storeRepo.current().onSuccess { store ->
+                store?.let { _state.value = _state.value.copy(storeId = it.id) }
+            }
+        }
+    }
 
     fun loadCategories() {
         catalog.observeCategories()
@@ -64,8 +76,8 @@ class CatalogViewModel @Inject constructor(
         }
     }
 
-    @Suppress("unused")
     fun setAvailable(productId: ProductId, available: Boolean) {
-        viewModelScope.launch { catalog.setAvailable(productId, available) }
+        val storeId = _state.value.storeId ?: return
+        viewModelScope.launch { catalog.setAvailable(storeId, productId, available) }
     }
 }

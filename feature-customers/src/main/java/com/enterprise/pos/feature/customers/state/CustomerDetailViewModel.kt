@@ -7,20 +7,30 @@ import com.enterprise.pos.core.Money
 import com.enterprise.pos.domain.model.Customer
 import com.enterprise.pos.domain.model.Order
 import com.enterprise.pos.domain.repository.CustomerRepository
+import com.enterprise.pos.domain.repository.GiftCardRepository
 import com.enterprise.pos.domain.repository.OrderRepository
 import com.enterprise.pos.domain.repository.PromotionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+sealed class CustomerDetailEvent {
+    data object Deleted : CustomerDetailEvent()
+    data class Error(val message: String) : CustomerDetailEvent()
+}
 
 data class CustomerDetailState(
     val customer: Customer? = null,
     val orders: List<Order> = emptyList(),
+    val loyaltyPoints: Int = 0,
+    val giftCardBalance: Money = Money.ZERO,
     val lifetimeValue: Money = Money.ZERO,
     val totalOrders: Int = 0,
     val averageOrderValue: Money = Money.ZERO,
@@ -36,21 +46,30 @@ data class CustomerDetailState(
 class CustomerDetailViewModel @Inject constructor(
     private val customerRepo: CustomerRepository,
     private val orderRepo: OrderRepository,
-    private val promotionRepo: PromotionRepository
+    private val promotionRepo: PromotionRepository,
+    private val giftCardRepo: GiftCardRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(CustomerDetailState())
     val state: StateFlow<CustomerDetailState> = _state.asStateFlow()
 
+    private val _events = Channel<CustomerDetailEvent>(Channel.BUFFERED)
+    val events = _events.receiveAsFlow()
+
     fun load(customerId: CustomerId, storeId: com.enterprise.pos.core.StoreId) {
         viewModelScope.launch {
+            _state.value = _state.value.copy(isLoading = true)
+
             customerRepo.observeCustomer(customerId)
                 .onEach { c ->
-                    _state.value = _state.value.copy(customer = c, isLoading = false)
+                    _state.value = _state.value.copy(
+                        customer = c,
+                        loyaltyPoints = c?.loyaltyPoints ?: 0,
+                        isLoading = false
+                    )
                 }
                 .launchIn(viewModelScope)
 
-            // Load purchase history
             customerRepo.purchaseHistory(customerId)
                 .onSuccess { orders ->
                     val paidOrders = orders.filter { it.status == com.enterprise.pos.domain.model.OrderStatus.PAID }
@@ -71,9 +90,11 @@ class CustomerDetailViewModel @Inject constructor(
                         favoriteItems = favorites
                     )
                 }
+                .onFailure {
+                    _state.value = _state.value.copy(error = it.message)
+                }
         }
 
-        // Loyalty rewards
         promotionRepo.observeLoyaltyRewards()
             .onEach { rewards ->
                 _state.value = _state.value.copy(availableRewards = rewards)
@@ -81,9 +102,16 @@ class CustomerDetailViewModel @Inject constructor(
             .launchIn(viewModelScope)
     }
 
+    fun deleteCustomer(customerId: CustomerId) {
+        viewModelScope.launch {
+            customerRepo.delete(customerId)
+                .onSuccess { _events.send(CustomerDetailEvent.Deleted) }
+                .onFailure { _events.send(CustomerDetailEvent.Error(it.message ?: "Delete failed")) }
+        }
+    }
+
     fun redeemReward(customerId: CustomerId, reward: com.enterprise.pos.domain.model.LoyaltyReward) {
         viewModelScope.launch {
-            // Subtract points, apply reward
             customerRepo.addLoyaltyPoints(customerId, -reward.pointsCost)
         }
     }
