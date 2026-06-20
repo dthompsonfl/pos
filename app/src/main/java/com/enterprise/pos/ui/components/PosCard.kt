@@ -34,7 +34,7 @@ fun ElevatedPosCard(
     title: String? = null,
     subtitle: String? = null,
     icon: ImageVector? = null,
-    actions: @Composable RowScope.() -> Unit = {},
+    actions: (@Composable RowScope.() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Card(
@@ -82,7 +82,7 @@ fun ElevatedPosCard(
                 }
             }
             content()
-            if (actions != {}) {
+            if (actions != null) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
