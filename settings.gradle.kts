@@ -31,6 +31,7 @@ rootProject.name = "EnterprisePOS"
 
 include(":backend")
 include(":app")
+include(":ui")
 include(":core")
 include(":domain")
 include(":data")
