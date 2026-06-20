@@ -34,6 +34,7 @@ dependencies {
     api(project(":core"))
     api(project(":domain"))
     api(project(":data"))
+    api(project(":ui"))
     api(project(":payment-api"))
 
     api(platform(libs.androidx.compose.bom))
