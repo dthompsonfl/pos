@@ -29,7 +29,6 @@ import com.enterprise.pos.feature.settings.state.SettingsUiState
 import com.enterprise.pos.feature.settings.state.SettingsViewModel
 import com.enterprise.pos.payment.model.PaymentProviderId
 import com.enterprise.pos.ui.components.*
-import com.enterprise.pos.ui.nav.Screen
 import com.enterprise.pos.ui.theme.PosTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -85,9 +84,9 @@ fun SettingsScreen(
                 summary = state.store?.name ?: "Not configured",
                 visible = searchQuery.isBlank() || "store".contains(searchQuery, ignoreCase = true)
             ) {
-                SummaryRow("Name", state.store?.name ?: "—")
-                SummaryRow("Currency", state.store?.currency ?: "—")
-                SummaryRow("Timezone", state.store?.timezone ?: "—")
+                SummaryRow("Name", state.store?.name ?: "-")
+                SummaryRow("Currency", state.store?.currency ?: "-")
+                SummaryRow("Timezone", state.store?.timezone ?: "-")
                 Spacer(modifier = Modifier.height(8.dp))
                 PrimaryButton(text = "Edit Store", onClick = onNavigateToStore, modifier = Modifier.fillMaxWidth())
             }
@@ -98,7 +97,7 @@ fun SettingsScreen(
                 summary = "Device and hardware assignments",
                 visible = searchQuery.isBlank() || "register".contains(searchQuery, ignoreCase = true)
             ) {
-                SummaryRow("Device", state.register?.deviceIdentifier ?: "—")
+                SummaryRow("Device", state.register?.deviceIdentifier ?: "-")
                 SummaryRow("Printer", state.printerName.ifBlank { "Not assigned" })
                 SummaryRow("Drawer", state.drawerName.ifBlank { "Not assigned" })
                 Spacer(modifier = Modifier.height(8.dp))
@@ -208,7 +207,7 @@ fun SettingsScreen(
 
         state.info?.let { message ->
             SnackbarHost(
-                hostState = remember { SnackbarHostState() }.apply { 
+                hostState = remember { SnackbarHostState() }.apply {
                     LaunchedEffect(message) { showSnackbar(message) }
                 },
                 modifier = Modifier.padding(16.dp)
@@ -225,7 +224,6 @@ private fun SettingsSection(
     visible: Boolean,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    var expanded by remember { mutableStateOf(false) }
     AnimatedVisibility(visible = visible) {
         ElevatedPosCard(
             title = title,
