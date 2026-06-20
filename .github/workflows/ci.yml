@@ -11,10 +11,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-test:
-    name: Build, Test & Lint
+  android-build:
+    name: Android Build, Test & Lint
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
 
     steps:
       - uses: actions/checkout@v4
@@ -49,11 +49,18 @@ jobs:
 
       - name: Verify Gradle wrapper
         run: |
+          chmod +x ./gradlew
           test -f gradle/wrapper/gradle-wrapper.jar || { echo "gradle-wrapper.jar missing"; exit 1; }
           ./gradlew --version
 
-      - name: Build debug APK & run unit tests
-        run: ./gradlew clean assembleDebug testDebugUnitTest --continue --stacktrace
+      - name: Clean Android build
+        run: ./gradlew clean --stacktrace
+
+      - name: Run Android unit tests
+        run: ./gradlew testDebugUnitTest --continue --stacktrace
+
+      - name: Build debug APK
+        run: ./gradlew assembleDebug --stacktrace
 
       - name: Run Android Lint
         run: ./gradlew lintDebug --continue
@@ -62,7 +69,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results
+          name: android-test-results
           path: |
             **/build/test-results/**/*.xml
             **/build/reports/tests/**
@@ -71,51 +78,94 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: lint-reports
+          name: android-lint-reports
           path: **/build/reports/lint-results-*.html
 
-      - name: Upload APK
+      - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: app-debug.apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
-  release-build:
-    name: Signed Release APK
-    needs: build-and-test
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/'))
+  backend-build:
+    name: Backend Build & Test
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Verify Gradle wrapper
+        run: |
+          chmod +x ./gradlew
+          ./gradlew --version
+
+      - name: Run backend tests
+        run: ./gradlew :backend:test --stacktrace
+
+      - name: Build backend distribution
+        run: ./gradlew :backend:installDist --stacktrace
+
+      - name: Upload backend test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: backend/build/test-results/**/*.xml
+
+  release-build:
+    name: Signed Release APK
+    needs: [android-build, backend-build]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
+
       - uses: android-actions/setup-android@v3
         with:
           packages: 'platform-tools platforms;android-34 build-tools;34.0.0'
+
       - uses: gradle/actions/setup-gradle@v3
+
+      - name: Verify signing secrets are present
+        run: |
+          test -n "${{ secrets.SIGNING_KEYSTORE_BASE64 }}" || { echo "Missing SIGNING_KEYSTORE_BASE64"; exit 1; }
+          test -n "${{ secrets.SIGNING_KEYSTORE_PASSWORD }}" || { echo "Missing SIGNING_KEYSTORE_PASSWORD"; exit 1; }
+          test -n "${{ secrets.SIGNING_KEY_ALIAS }}" || { echo "Missing SIGNING_KEY_ALIAS"; exit 1; }
+          test -n "${{ secrets.SIGNING_KEY_PASSWORD }}" || { echo "Missing SIGNING_KEY_PASSWORD"; exit 1; }
 
       - name: Decode signing key
         run: echo "${{ secrets.SIGNING_KEYSTORE_BASE64 }}" | base64 -d > app/release.keystore
 
       - name: Build release APK
-        run: ./gradlew assembleRelease
+        run: ./gradlew assembleRelease --stacktrace
         env:
           POS_RELEASE_KEYSTORE_PATH: release.keystore
           POS_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.SIGNING_KEYSTORE_PASSWORD }}
           POS_RELEASE_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
           POS_RELEASE_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
 
-      - name: Verify APK is signed
-        run: |
-          if [ -f app/build/outputs/apk/release/app-release.apk ]; then
-            echo "Release APK built"
-          else
-            echo "Release APK missing — signing likely not configured"
-            exit 1
-          fi
+      - name: Verify APK exists
+        run: test -f app/build/outputs/apk/release/app-release.apk
 
       - name: Upload release APK
         uses: actions/upload-artifact@v4
