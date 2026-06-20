@@ -7,6 +7,22 @@ plugins {
     alias(libs.plugins.hilt)
 }
 
+val releaseKeystorePath = System.getenv("POS_RELEASE_KEYSTORE_PATH").orEmpty()
+val releaseKeystorePassword = System.getenv("POS_RELEASE_KEYSTORE_PASSWORD").orEmpty()
+val releaseKeyAlias = System.getenv("POS_RELEASE_KEY_ALIAS").orEmpty()
+val releaseKeyPassword = System.getenv("POS_RELEASE_KEY_PASSWORD").orEmpty()
+val releaseSigningConfigured = listOf(
+    releaseKeystorePath,
+    releaseKeystorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword
+).all { it.isNotBlank() }
+
+fun releaseSigningFailureMessage(): String =
+    "Release signing requires POS_RELEASE_KEYSTORE_PATH, POS_RELEASE_KEYSTORE_PASSWORD, " +
+        "POS_RELEASE_KEY_ALIAS, and POS_RELEASE_KEY_PASSWORD. Release builds must not use " +
+        "debug signing or produce unsigned artifacts."
+
 android {
     namespace = "com.enterprise.pos"
     compileSdk = 34
@@ -20,10 +36,6 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
 
-        // Provider identifiers are NOT secrets — they may be embedded in the binary.
-        // Real secrets (Stripe secret key, Shopify access token, Square access token) live
-        // ONLY on the backend and are never read from local.properties / gradle.properties.
-        // These fields reference the merchant's published identifiers, not credentials.
         buildConfigField("String", "STRIPE_LOCATION_ID", "\"${project.findProperty("stripeLocationId") ?: ""}\"")
         buildConfigField("String", "SQUARE_APPLICATION_ID", "\"${project.findProperty("squareApplicationId") ?: ""}\"")
         buildConfigField("String", "SHOPIFY_SHOP_DOMAIN", "\"${project.findProperty("shopifyShopDomain") ?: ""}\"")
@@ -32,20 +44,12 @@ android {
 
     signingConfigs {
         create("release") {
-            // Release signing is configured via environment variables only.
-            // CI must set: POS_RELEASE_KEYSTORE_PATH, POS_RELEASE_KEYSTORE_PASSWORD,
-            // POS_RELEASE_KEY_ALIAS, POS_RELEASE_KEY_PASSWORD.
-            // If any are missing the release build will fail loudly
-            // instead of silently falling back to the debug keystore.
-            val ksPath = System.getenv("POS_RELEASE_KEYSTORE_PATH") ?: ""
-            val ksPass = System.getenv("POS_RELEASE_KEYSTORE_PASSWORD") ?: ""
-            val alias = System.getenv("POS_RELEASE_KEY_ALIAS") ?: ""
-            val keyPass = System.getenv("POS_RELEASE_KEY_PASSWORD") ?: ""
-            if (ksPath.isNotEmpty()) {
-                storeFile = file(ksPath)
-                storePassword = ksPass
-                keyAlias = alias
-                keyPassword = keyPass
+            if (releaseSigningConfigured) {
+                val keystoreFile = file(releaseKeystorePath)
+                storeFile = keystoreFile
+                storePassword = releaseKeystorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
             }
         }
     }
@@ -55,7 +59,6 @@ android {
             isDebuggable = true
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
-            // Demo PINs and simulated providers are only enabled in debug builds.
             buildConfigField("boolean", "ENABLE_DEMO_DATA", "true")
             buildConfigField("boolean", "ENABLE_SIMULATED_PROVIDERS", "true")
             buildConfigField("boolean", "ENABLE_MANUAL_CARD_ENTRY", "true")
@@ -64,11 +67,8 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            // Release signing: only attach if env vars were set. Otherwise the build
-            // produces an unsigned APK and `assembleRelease` will fail at packaging time.
-            val releaseSc = signingConfigs.getByName("release")
-            if (releaseSc.storeFile != null && releaseSc.storeFile!!.exists()) {
-                signingConfig = releaseSc
+            if (releaseSigningConfigured) {
+                signingConfig = signingConfigs.getByName("release")
             }
             buildConfigField("boolean", "ENABLE_DEMO_DATA", "false")
             buildConfigField("boolean", "ENABLE_SIMULATED_PROVIDERS", "false")
@@ -103,6 +103,26 @@ android {
             excludes += "/META-INF/DEPENDENCIES"
         }
     }
+}
+
+tasks.register("validateReleaseSigning") {
+    doLast {
+        if (!releaseSigningConfigured) {
+            throw org.gradle.api.GradleException(releaseSigningFailureMessage())
+        }
+        if (!file(releaseKeystorePath).exists()) {
+            throw org.gradle.api.GradleException("Release keystore not found at POS_RELEASE_KEYSTORE_PATH=$releaseKeystorePath")
+        }
+    }
+}
+
+tasks.matching { task ->
+    task.name == "preReleaseBuild" ||
+        task.name == "packageRelease" ||
+        task.name == "assembleRelease" ||
+        task.name == "bundleRelease"
+}.configureEach {
+    dependsOn("validateReleaseSigning")
 }
 
 dependencies {
