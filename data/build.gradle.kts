@@ -28,6 +28,12 @@ android {
     kotlinOptions { jvmTarget = "17" }
 }
 
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+    arg("room.incremental", "true")
+    arg("room.expandProjection", "true")
+}
+
 dependencies {
     api(project(":core"))
     api(project(":domain"))
