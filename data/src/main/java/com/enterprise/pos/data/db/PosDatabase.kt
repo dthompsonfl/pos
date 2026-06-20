@@ -89,7 +89,7 @@ import com.enterprise.pos.data.db.entity.ZReportEntity
         SyncOutboxEntity::class
     ],
     version = 3,
-    exportSchema = false
+    exportSchema = true
 )
 abstract class PosDatabase : RoomDatabase() {
     abstract fun catalogDao(): CatalogDao
