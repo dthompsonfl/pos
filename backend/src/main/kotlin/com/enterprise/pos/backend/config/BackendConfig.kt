@@ -16,12 +16,25 @@ data class BackendConfig(
     val squareApplicationId: String,
     val squareApplicationSecret: String,
     val squareEnvironment: String,
+    val squareRedirectUri: String,
     val databaseUrl: String,
     val redisUrl: String,
     val jwtSecret: String,
     val posApiKey: String
 ) {
     val isProduction: Boolean get() = environment == "production"
+    val squareTokenUrl: String
+        get() = if (isProduction) {
+            "https://connect.squareup.com/oauth2/token"
+        } else {
+            "https://connect.squareupsandbox.com/oauth2/token"
+        }
+    val squareAuthorizeUrl: String
+        get() = if (isProduction) {
+            "https://connect.squareup.com/oauth2/authorize"
+        } else {
+            "https://connect.squareupsandbox.com/oauth2/authorize"
+        }
 
     companion object {
         fun fromEnv(): BackendConfig = BackendConfig(
@@ -37,6 +50,7 @@ data class BackendConfig(
             squareApplicationId = System.getenv("SQUARE_APPLICATION_ID") ?: "",
             squareApplicationSecret = System.getenv("SQUARE_APPLICATION_SECRET") ?: "",
             squareEnvironment = System.getenv("SQUARE_ENVIRONMENT") ?: "sandbox",
+            squareRedirectUri = System.getenv("SQUARE_REDIRECT_URI") ?: "",
             databaseUrl = System.getenv("DATABASE_URL") ?: "postgres://pos:pos@localhost:5432/pos_backend",
             redisUrl = System.getenv("REDIS_URL") ?: "redis://localhost:6379",
             jwtSecret = System.getenv("JWT_SECRET")

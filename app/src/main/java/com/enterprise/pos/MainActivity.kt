@@ -27,6 +27,8 @@ import com.enterprise.pos.ui.nav.AdaptiveNavigationLayout
 import com.enterprise.pos.ui.nav.PosNavGraph
 import com.enterprise.pos.ui.nav.rememberPosNavController
 import com.enterprise.pos.ui.nav.safeNavigate
+import com.enterprise.pos.ui.onboarding.OnboardingScreen
+import com.enterprise.pos.ui.onboarding.OnboardingViewModel
 import com.enterprise.pos.ui.state.ConfigViewModel
 import com.enterprise.pos.ui.theme.PosTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -52,9 +54,10 @@ class MainActivity : ComponentActivity() {
                     return@PosTheme
                 }
 
-                // If no store/register is configured, redirect to onboarding.
                 if (!config.isReady) {
-                    OnboardingScreen(onComplete = { /* Phase 15 will wire navigation to settings */ })
+                    OnboardingScreen(
+                        onComplete = { configVm.loadConfig() }
+                    )
                     return@PosTheme
                 }
 
@@ -86,18 +89,5 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun OnboardingScreen(onComplete: () -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text("Welcome to Enterprise POS", style = MaterialTheme.typography.headlineLarge)
-        Text("Store setup is incomplete. Please finish onboarding in Settings.")
-        Button(onClick = onComplete) { Text("Go to Settings") }
     }
 }

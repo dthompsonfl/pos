@@ -27,10 +27,13 @@ class ConfigViewModel @Inject constructor(
     val state: StateFlow<ConfigState> = _state.asStateFlow()
 
     init {
+        loadConfig()
+    }
+
+    fun loadConfig() {
         viewModelScope.launch {
             val store = storeRepo.current().getOrNull()
             val registers = store?.let { storeRepo.registers(it.id).getOrNull() } ?: emptyList()
-            // Pick the first active register, or none if not configured.
             val register = registers.firstOrNull { it.active }
             _state.value = ConfigState(
                 storeId = store?.id,

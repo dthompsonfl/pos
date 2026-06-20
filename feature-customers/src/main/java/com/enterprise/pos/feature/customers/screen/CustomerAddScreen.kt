@@ -10,6 +10,7 @@ fun CustomerAddScreen(
 ) {
     CustomerEditScreen(
         customerId = null,
+        quickAdd = true,
         onBack = onBack,
         onSaved = onSaved
     )

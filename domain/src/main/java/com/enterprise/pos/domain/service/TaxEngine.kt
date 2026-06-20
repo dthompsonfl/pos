@@ -7,6 +7,7 @@ import com.enterprise.pos.domain.model.Order
 import com.enterprise.pos.domain.model.OrderLineType
 import com.enterprise.pos.domain.model.TaxCategory
 import com.enterprise.pos.domain.model.TaxLine
+import kotlinx.serialization.Serializable
 import java.math.RoundingMode
 
 /**
@@ -24,6 +25,7 @@ interface TaxEngine {
     fun apply(order: Order): Result<Order>
 }
 
+@Serializable
 data class TaxRule(
     val name: String,
     val rate: Percent,
@@ -32,6 +34,7 @@ data class TaxRule(
     val isInclusive: Boolean = false // if true, the rate is already included in the item price
 )
 
+@Serializable
 data class TaxConfiguration(
     val rules: List<TaxRule>,
     val defaultCategory: TaxCategory = TaxCategory.STANDARD

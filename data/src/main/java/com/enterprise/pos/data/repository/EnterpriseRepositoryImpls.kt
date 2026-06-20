@@ -792,12 +792,15 @@ class MigrationRepositoryImpl(
         createJob(MigrationSource.OTHER, MigrationType.PRODUCTS, configJson, createdBy)
 }
 
-class SettingRepositoryImpl(private val dao: SettingDao, private val clock: Clock = SystemClock) {
-    suspend fun get(key: String): Result<String?> = Result.catching {
+class SettingRepositoryImpl(
+    private val dao: SettingDao,
+    private val clock: Clock = SystemClock
+) : com.enterprise.pos.domain.repository.SettingsRepository {
+    override suspend fun get(key: String): Result<String?> = Result.catching {
         dao.get(key)?.valueJson
     }
-    suspend fun set(key: String, valueJson: String, updatedBy: String?): Result<Unit> = Result.catching {
+    override suspend fun set(key: String, valueJson: String, updatedBy: String?): Result<Unit> = Result.catching {
         dao.upsert(SettingEntity(key = key, valueJson = valueJson, updatedAt = clock.now(), updatedBy = updatedBy))
     }
-    fun observeAll() = dao.observeAll()
+    override fun observeAll() = dao.observeAll()
 }

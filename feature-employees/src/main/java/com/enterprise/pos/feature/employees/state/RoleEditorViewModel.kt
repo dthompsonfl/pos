@@ -19,6 +19,12 @@ sealed class RoleEditorEvent {
     data class Error(val message: String) : RoleEditorEvent()
 }
 
+data class CustomRole(
+    val id: String,
+    val name: String,
+    val permissions: Map<String, Boolean>
+)
+
 data class PermissionGroup(
     val name: String,
     val permissions: List<String>
@@ -26,7 +32,9 @@ data class PermissionGroup(
 
 data class RoleEditorState(
     val roles: List<EmployeeRole> = EmployeeRole.entries,
-    val selectedRole: EmployeeRole = EmployeeRole.CASHIER,
+    val customRoles: List<CustomRole> = emptyList(),
+    val selectedRole: EmployeeRole? = EmployeeRole.CASHIER,
+    val selectedCustomRole: CustomRole? = null,
     val rolePermissions: Map<String, Boolean> = emptyMap(),
     val isSaving: Boolean = false,
     val error: String? = null
@@ -53,7 +61,11 @@ class RoleEditorViewModel @Inject constructor(
 
     fun selectRole(role: EmployeeRole) {
         viewModelScope.launch {
-            _state.value = _state.value.copy(selectedRole = role, isSaving = true)
+            _state.value = _state.value.copy(
+                selectedRole = role,
+                selectedCustomRole = null,
+                isSaving = true
+            )
             employeeRepo.permissions(role)
                 .onSuccess { perms ->
                     _state.value = _state.value.copy(
@@ -67,10 +79,39 @@ class RoleEditorViewModel @Inject constructor(
         }
     }
 
+    fun selectCustomRole(role: CustomRole) {
+        _state.value = _state.value.copy(
+            selectedCustomRole = role,
+            selectedRole = null,
+            rolePermissions = role.permissions
+        )
+    }
+
     fun togglePermission(permission: String) {
         val current = _state.value.rolePermissions.toMutableMap()
         current[permission] = !(current[permission] ?: false)
         _state.value = _state.value.copy(rolePermissions = current)
+    }
+
+    fun createCustomRole(name: String) {
+        if (name.isBlank()) return
+        val newRole = CustomRole(
+            id = java.util.UUID.randomUUID().toString(),
+            name = name,
+            permissions = _state.value.rolePermissions
+        )
+        _state.value = _state.value.copy(
+            customRoles = _state.value.customRoles + newRole,
+            selectedCustomRole = newRole,
+            selectedRole = null
+        )
+    }
+
+    fun deleteCustomRole(role: CustomRole) {
+        _state.value = _state.value.copy(
+            customRoles = _state.value.customRoles.filter { it.id != role.id },
+            selectedCustomRole = if (_state.value.selectedCustomRole?.id == role.id) null else _state.value.selectedCustomRole
+        )
     }
 
     fun saveRole() {

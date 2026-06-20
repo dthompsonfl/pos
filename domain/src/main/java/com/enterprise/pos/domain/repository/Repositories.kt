@@ -91,8 +91,16 @@ interface EmployeeRepository {
     suspend fun permissions(role: com.enterprise.pos.domain.model.EmployeeRole): Result<com.enterprise.pos.domain.model.RolePermissions>
 }
 
+interface SettingsRepository {
+    suspend fun get(key: String): Result<String?>
+    suspend fun set(key: String, valueJson: String, updatedBy: String?): Result<Unit>
+    fun observeAll(): Flow<List<com.enterprise.pos.data.db.entity.SettingEntity>>
+}
+
 interface StoreRepository {
     fun observeStores(): Flow<List<com.enterprise.pos.domain.model.Store>>
     suspend fun current(): Result<com.enterprise.pos.domain.model.Store>
     suspend fun registers(storeId: StoreId): Result<List<com.enterprise.pos.domain.model.Register>>
+    suspend fun upsertStore(store: com.enterprise.pos.domain.model.Store): Result<com.enterprise.pos.domain.model.Store>
+    suspend fun upsertRegister(register: com.enterprise.pos.domain.model.Register): Result<com.enterprise.pos.domain.model.Register>
 }

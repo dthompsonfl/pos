@@ -7,6 +7,7 @@ import com.enterprise.pos.core.ProductId
 import com.enterprise.pos.domain.model.Category
 import com.enterprise.pos.domain.model.Product
 import com.enterprise.pos.domain.repository.CatalogRepository
+import com.enterprise.pos.domain.repository.StoreRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

@@ -26,6 +26,7 @@ import com.enterprise.pos.ui.theme.PosTheme
 @Composable
 fun CustomerEditScreen(
     customerId: CustomerId? = null,
+    quickAdd: Boolean = false,
     onBack: () -> Unit,
     onSaved: () -> Unit,
     viewModel: CustomerEditViewModel = hiltViewModel()
@@ -127,112 +128,114 @@ fun CustomerEditScreen(
                 supportingText = { state.errors["email"]?.let { Text(it, color = MaterialTheme.colorScheme.error) } }
             )
 
-            SectionTitle("Address")
+            if (!quickAdd) {
+                SectionTitle("Address")
 
-            OutlinedTextField(
-                value = state.form.address,
-                onValueChange = { value -> viewModel.updateForm { it.copy(address = value) } },
-                label = { Text("Street Address") },
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
-            )
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
-                    value = state.form.city,
-                    onValueChange = { value -> viewModel.updateForm { it.copy(city = value) } },
-                    label = { Text("City") },
-                    modifier = Modifier.weight(1f),
+                    value = state.form.address,
+                    onValueChange = { value -> viewModel.updateForm { it.copy(address = value) } },
+                    label = { Text("Street Address") },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
+                )
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = state.form.city,
+                        onValueChange = { value -> viewModel.updateForm { it.copy(city = value) } },
+                        label = { Text("City") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
+                    )
+                    OutlinedTextField(
+                        value = state.form.state,
+                        onValueChange = { value -> viewModel.updateForm { it.copy(state = value) } },
+                        label = { Text("State") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
+                    )
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = state.form.zip,
+                        onValueChange = { value -> viewModel.updateForm { it.copy(zip = value) } },
+                        label = { Text("ZIP") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.PostalAddress, imeAction = ImeAction.Next)
+                    )
+                    OutlinedTextField(
+                        value = state.form.country,
+                        onValueChange = { value -> viewModel.updateForm { it.copy(country = value) } },
+                        label = { Text("Country") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
+                    )
+                }
+
+                SectionTitle("Details")
+
+                OutlinedTextField(
+                    value = state.form.loyaltyNumber,
+                    onValueChange = { value -> viewModel.updateForm { it.copy(loyaltyNumber = value) } },
+                    label = { Text("Loyalty Number") },
+                    modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
                 )
+
                 OutlinedTextField(
-                    value = state.form.state,
-                    onValueChange = { value -> viewModel.updateForm { it.copy(state = value) } },
-                    label = { Text("State") },
-                    modifier = Modifier.weight(1f),
+                    value = state.form.group,
+                    onValueChange = { value -> viewModel.updateForm { it.copy(group = value) } },
+                    label = { Text("Customer Group") },
+                    modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
                 )
-            }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
-                    value = state.form.zip,
-                    onValueChange = { value -> viewModel.updateForm { it.copy(zip = value) } },
-                    label = { Text("ZIP") },
-                    modifier = Modifier.weight(1f),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.PostalAddress, imeAction = ImeAction.Next)
-                )
-                OutlinedTextField(
-                    value = state.form.country,
-                    onValueChange = { value -> viewModel.updateForm { it.copy(country = value) } },
-                    label = { Text("Country") },
-                    modifier = Modifier.weight(1f),
+                    value = state.form.tags,
+                    onValueChange = { value -> viewModel.updateForm { it.copy(tags = value) } },
+                    label = { Text("Tags (comma-separated)") },
+                    modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
                 )
-            }
 
-            SectionTitle("Details")
-
-            OutlinedTextField(
-                value = state.form.loyaltyNumber,
-                onValueChange = { value -> viewModel.updateForm { it.copy(loyaltyNumber = value) } },
-                label = { Text("Loyalty Number") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
-            )
-
-            OutlinedTextField(
-                value = state.form.group,
-                onValueChange = { value -> viewModel.updateForm { it.copy(group = value) } },
-                label = { Text("Customer Group") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
-            )
-
-            OutlinedTextField(
-                value = state.form.tags,
-                onValueChange = { value -> viewModel.updateForm { it.copy(tags = value) } },
-                label = { Text("Tags (comma-separated)") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
-            )
-
-            OutlinedTextField(
-                value = state.form.birthday,
-                onValueChange = { value -> viewModel.updateForm { it.copy(birthday = value) } },
-                label = { Text("Birthday (YYYY-MM-DD)") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
-            )
-
-            OutlinedTextField(
-                value = state.form.notes,
-                onValueChange = { value -> viewModel.updateForm { it.copy(notes = value) } },
-                label = { Text("Notes") },
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 3,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done)
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Checkbox(
-                    checked = state.form.marketingConsent,
-                    onCheckedChange = { checked ->
-                        viewModel.updateForm { it.copy(marketingConsent = checked) }
-                    }
+                OutlinedTextField(
+                    value = state.form.birthday,
+                    onValueChange = { value -> viewModel.updateForm { it.copy(birthday = value) } },
+                    label = { Text("Birthday (YYYY-MM-DD)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
                 )
-                Text("Marketing consent", style = MaterialTheme.typography.bodyLarge)
+
+                OutlinedTextField(
+                    value = state.form.notes,
+                    onValueChange = { value -> viewModel.updateForm { it.copy(notes = value) } },
+                    label = { Text("Notes") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done)
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = state.form.marketingConsent,
+                        onCheckedChange = { checked ->
+                            viewModel.updateForm { it.copy(marketingConsent = checked) }
+                        }
+                    )
+                    Text("Marketing consent", style = MaterialTheme.typography.bodyLarge)
+                }
             }
 
             Spacer(Modifier.height(8.dp))

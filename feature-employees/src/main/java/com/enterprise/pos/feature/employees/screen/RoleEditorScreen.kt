@@ -26,6 +26,9 @@ fun RoleEditorScreen(
     viewModel: RoleEditorViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    var showCreateDialog by remember { mutableStateOf(false) }
+    var newRoleName by remember { mutableStateOf("") }
+    var roleToDelete by remember { mutableStateOf<com.enterprise.pos.feature.employees.state.CustomRole?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.selectRole(EmployeeRole.CASHIER)
@@ -66,7 +69,7 @@ fun RoleEditorScreen(
         ) {
             Spacer(Modifier.height(8.dp))
 
-            Text("Select Role", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text("System Roles", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
 
             var roleExpanded by remember { mutableStateOf(false) }
             ExposedDropdownMenuBox(
@@ -75,7 +78,11 @@ fun RoleEditorScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 OutlinedTextField(
-                    value = state.selectedRole.name.replace('_', ' ').lowercase().replaceFirstChar { it.titlecase() },
+                    value = when {
+                        state.selectedCustomRole != null -> state.selectedCustomRole.name
+                        state.selectedRole != null -> state.selectedRole.name.replace('_', ' ').lowercase().replaceFirstChar { it.titlecase() }
+                        else -> "Select role"
+                    },
                     onValueChange = {},
                     readOnly = true,
                     label = { Text("Role") },
@@ -96,6 +103,39 @@ fun RoleEditorScreen(
                                 roleExpanded = false
                             }
                         )
+                    }
+                    state.customRoles.forEach { role ->
+                        DropdownMenuItem(
+                            text = { Text(role.name) },
+                            onClick = {
+                                viewModel.selectCustomRole(role)
+                                roleExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = { showCreateDialog = true },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Filled.Add, null)
+                    Spacer(Modifier.width(4.dp))
+                    Text("New Role")
+                }
+                if (state.selectedCustomRole != null) {
+                    OutlinedButton(
+                        onClick = { roleToDelete = state.selectedCustomRole },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Icon(Icons.Filled.Delete, null)
+                        Spacer(Modifier.width(4.dp))
+                        Text("Delete")
                     }
                 }
             }
@@ -154,6 +194,55 @@ fun RoleEditorScreen(
 
             Spacer(Modifier.height(16.dp))
         }
+    }
+
+    if (showCreateDialog) {
+        AlertDialog(
+            onDismissRequest = { showCreateDialog = false; newRoleName = "" },
+            title = { Text("Create New Role") },
+            text = {
+                OutlinedTextField(
+                    value = newRoleName,
+                    onValueChange = { newRoleName = it },
+                    label = { Text("Role Name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.createCustomRole(newRoleName)
+                        showCreateDialog = false
+                        newRoleName = ""
+                    },
+                    enabled = newRoleName.isNotBlank()
+                ) { Text("Create") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCreateDialog = false; newRoleName = "" }) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (roleToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { roleToDelete = null },
+            title = { Text("Delete Role") },
+            text = { Text("Are you sure you want to delete the role '${roleToDelete?.name}'? This cannot be undone.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        roleToDelete?.let { viewModel.deleteCustomRole(it) }
+                        roleToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) { Text("Delete") }
+            },
+            dismissButton = {
+                TextButton(onClick = { roleToDelete = null }) { Text("Cancel") }
+            }
+        )
     }
 }
 

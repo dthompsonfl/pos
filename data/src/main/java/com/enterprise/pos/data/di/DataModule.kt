@@ -32,7 +32,15 @@ import com.enterprise.pos.data.db.dao.TableDao
 import com.enterprise.pos.data.db.dao.TipLogDao
 import com.enterprise.pos.data.db.dao.ZReportDao
 import com.enterprise.pos.data.repository.AnalyticsRepositoryImpl
-import com.enterprise.pos.data.repository.AuditLogRepositoryImpl
+import com.enterprise.pos.core.security.BiometricAuth
+import com.enterprise.pos.core.security.EncryptionManager
+import com.enterprise.pos.core.security.SecureStorage
+import com.enterprise.pos.data.security.AuditLogRepositoryImpl
+import com.enterprise.pos.data.security.SecurityInterceptor
+import com.enterprise.pos.data.security.SecurityRepositoryImpl
+import com.enterprise.pos.domain.security.AuditLogger
+import com.enterprise.pos.domain.security.PermissionChecker
+import com.enterprise.pos.domain.security.SessionManager
 import com.enterprise.pos.data.repository.CatalogRepositoryImpl
 import com.enterprise.pos.data.repository.CustomerRepositoryImpl
 import com.enterprise.pos.data.repository.EmployeeRepositoryImpl
@@ -132,6 +140,9 @@ object DataModule {
 
     @Provides @Singleton
     fun provideStoreRepository(impl: StoreRepositoryImpl): StoreRepository = impl
+
+    @Provides @Singleton
+    fun provideSettingsRepository(impl: SettingRepositoryImpl): com.enterprise.pos.domain.repository.SettingsRepository = impl
 
     @Provides @Singleton
     fun provideCatalogImpl(dao: CatalogDao, syncOutboxDao: com.enterprise.pos.data.sync.SyncOutboxDao, clock: Clock): CatalogRepositoryImpl =
@@ -248,4 +259,37 @@ object DataModule {
         logger: Logger,
         backend: SyncBackend
     ): SyncEngine = SyncEngine(outboxDao, logger, backend)
+
+    // --- Security providers ---
+    @Provides @Singleton
+    fun providePermissionChecker(): PermissionChecker = PermissionChecker()
+
+    @Provides @Singleton
+    fun provideSessionManager(): SessionManager = SessionManager()
+
+    @Provides @Singleton
+    fun provideAuditLogger(auditLogRepository: AuditLogRepository): AuditLogger =
+        AuditLogger(auditLogRepository)
+
+    @Provides @Singleton
+    fun provideSecurityRepository(permissionChecker: PermissionChecker): SecurityRepositoryImpl =
+        SecurityRepositoryImpl(permissionChecker)
+
+    @Provides @Singleton
+    fun provideSecurityInterceptor(
+        permissionChecker: PermissionChecker,
+        auditLogger: AuditLogger
+    ): SecurityInterceptor = SecurityInterceptor(permissionChecker, auditLogger)
+
+    @Provides @Singleton
+    fun provideSecureStorage(@ApplicationContext ctx: Context): SecureStorage =
+        SecureStorage(ctx)
+
+    @Provides @Singleton
+    fun provideBiometricAuth(@ApplicationContext ctx: Context): BiometricAuth =
+        BiometricAuth(ctx)
+
+    @Provides @Singleton
+    fun provideEncryptionManager(@ApplicationContext ctx: Context): EncryptionManager =
+        EncryptionManager(ctx)
 }

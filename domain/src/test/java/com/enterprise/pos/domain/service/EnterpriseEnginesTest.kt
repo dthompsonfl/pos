@@ -1,222 +1,586 @@
 package com.enterprise.pos.domain.service
 
-import com.enterprise.pos.core.CategoryId
-import com.enterprise.pos.core.EmployeeId
-import com.enterprise.pos.core.Id
 import com.enterprise.pos.core.Money
-import com.enterprise.pos.core.OrderId
-import com.enterprise.pos.core.OrderLineId
 import com.enterprise.pos.core.Percent
-import com.enterprise.pos.core.ProductId
-import com.enterprise.pos.core.RegisterId
-import com.enterprise.pos.core.ShiftId
-import com.enterprise.pos.core.StoreId
-import com.enterprise.pos.core.VariantId
-import com.enterprise.pos.domain.model.DiningMode
 import com.enterprise.pos.domain.model.Order
 import com.enterprise.pos.domain.model.OrderLine
 import com.enterprise.pos.domain.model.OrderLineType
 import com.enterprise.pos.domain.model.Promotion
 import com.enterprise.pos.domain.model.PromotionScope
 import com.enterprise.pos.domain.model.PromotionType
-import com.enterprise.pos.domain.model.AbcAnalysis
-import com.enterprise.pos.domain.model.AbcClass
-import com.enterprise.pos.domain.model.TipPoolType
+import com.enterprise.pos.domain.model.TaxCategory
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
+import java.time.Instant
+import java.time.LocalTime
 import java.time.ZoneId
 
 class PromotionEngineTest {
 
-    private val zone = ZoneId.systemDefault()
+    private fun line(price: Double, qty: Int = 1, productId: String = "prod-1", categoryId: String = "cat-1"): OrderLine {
+        return OrderLine(
+            id = com.enterprise.pos.core.OrderLineId("line-${System.nanoTime()}"),
+            lineType = OrderLineType.ITEM,
+            productId = com.enterprise.pos.core.ProductId(productId),
+            variantId = com.enterprise.pos.core.VariantId("var-1"),
+            name = "Test Item",
+            quantity = com.enterprise.pos.core.Quantity.of(qty),
+            unitPrice = Money.of(price),
+            taxCategory = TaxCategory.STANDARD
+        )
+    }
 
-    private fun newOrder(vararg items: Pair<String, Money>): Order {
-        val now = System.currentTimeMillis()
-        val lines = items.mapIndexed { i, (name, price) ->
-            OrderLine(
-                id = OrderLineId("line-$i"), lineType = OrderLineType.ITEM,
-                productId = ProductId("p-$i"), variantId = VariantId("v-$i"),
-                name = name, quantity = com.enterprise.pos.core.Quantity.of(1), unitPrice = price
-            )
-        }
+    private fun order(vararg lines: OrderLine): Order {
         return Order(
-            id = OrderId("o1"), storeId = StoreId("s"), registerId = RegisterId("r"),
-            employeeId = EmployeeId("e"), diningMode = DiningMode.RETAIL,
-            status = com.enterprise.pos.domain.model.OrderStatus.OPEN,
-            lines = lines, createdAt = now, updatedAt = now
+            id = com.enterprise.pos.core.OrderId("order-1"),
+            storeId = com.enterprise.pos.core.StoreId("store-1"),
+            registerId = com.enterprise.pos.core.RegisterId("reg-1"),
+            employeeId = com.enterprise.pos.core.EmployeeId("emp-1"),
+            lines = lines.toList(),
+            createdAt = 0L
         )
     }
 
-    private fun promo(
-        type: PromotionType, scope: PromotionScope, percent: Int = 0,
-        value: Money? = null, buyQty: Int = 0, getQty: Int = 0,
-        productIds: List<ProductId> = emptyList(),
-        startHour: Int = 0, endHour: Int = 24
+    private fun promotion(
+        type: PromotionType,
+        scope: PromotionScope = PromotionScope.ORDER,
+        percent: Int = 0,
+        value: Money? = null,
+        buyQty: Int = 0,
+        getQty: Int = 0,
+        active: Boolean = true,
+        startTime: Long = Instant.parse("2024-01-01T00:00:00Z").toEpochMilli(),
+        endTime: Long = Instant.parse("2024-12-31T23:59:59Z").toEpochMilli(),
+        daysOfWeek: Set<Int> = emptySet(),
+        priority: Int = 0,
+        productIds: List<String> = emptyList(),
+        categoryIds: List<String> = emptyList(),
+        requiresCode: Boolean = false,
+        code: String? = null
     ): Promotion {
-        val today = java.time.LocalDate.now(zone)
-        val start = today.atTime(startHour, 0).atZone(zone).toInstant().toEpochMilli()
-        val end = today.atTime(endHour, 0).atZone(zone).toInstant().toEpochMilli()
         return Promotion(
-            id = Id("promo"), name = "Test", description = "", type = type, scope = scope,
-            value = value, percent = percent, buyQty = buyQty, getQty = getQty,
-            productIds = productIds, startTime = start, endTime = end, active = true
+            id = com.enterprise.pos.core.Id.random(),
+            name = "Test Promo",
+            description = "",
+            type = type,
+            scope = scope,
+            percent = percent,
+            value = value,
+            buyQty = buyQty,
+            getQty = getQty,
+            active = active,
+            startTime = startTime,
+            endTime = endTime,
+            daysOfWeek = daysOfWeek,
+            priority = priority,
+            productIds = productIds.map { com.enterprise.pos.core.ProductId(it) },
+            categoryIds = categoryIds.map { com.enterprise.pos.core.CategoryId(it) },
+            requiresCode = requiresCode,
+            code = code
         )
     }
 
+    private val now = Instant.parse("2024-06-15T12:00:00Z").toEpochMilli()
+    private val zone = ZoneId.of("UTC")
+
     @Test
-    fun `percentage off order applies to subtotal`() {
-        val p = promo(PromotionType.PERCENT_OFF, PromotionScope.ORDER, percent = 10)
-        val engine = PromotionEngine(listOf(p))
-        val order = newOrder("Pizza" to Money.of(20.0))
-        val discount = engine.computeDiscount(p, order)
-        assertThat(discount.minorUnits).isEqualTo(200L) // 10% of $20 = $2.00
+    fun `percentage off order`() {
+        val engine = PromotionEngine(listOf(
+            promotion(PromotionType.PERCENT_OFF, percent = 10)
+        ))
+        val o = order(line(100.0))
+        val discount = engine.computeDiscount(engine.applicable(o, now, zone).first(), o)
+        assertThat(discount.minorUnits).isEqualTo(1000L) // 10% of 100 = 10
     }
 
     @Test
-    fun `fixed off is capped at subtotal`() {
-        val p = promo(PromotionType.FIXED_OFF, PromotionScope.ORDER, value = Money.of(50.0))
-        val engine = PromotionEngine(listOf(p))
-        val order = newOrder("Pizza" to Money.of(20.0))
-        val discount = engine.computeDiscount(p, order)
-        assertThat(discount.minorUnits).isEqualTo(2000L) // capped at $20
+    fun `fixed off order`() {
+        val engine = PromotionEngine(listOf(
+            promotion(PromotionType.FIXED_OFF, value = Money.of(15.00))
+        ))
+        val o = order(line(100.0))
+        val discount = engine.computeDiscount(engine.applicable(o, now, zone).first(), o)
+        assertThat(discount.minorUnits).isEqualTo(1500L)
     }
 
     @Test
-    fun `bogo gives cheapest items free`() {
-        val p = promo(
-            PromotionType.BUY_X_GET_Y, PromotionScope.PRODUCT,
-            buyQty = 1, getQty = 1,
-            productIds = listOf(ProductId("p-0"), ProductId("p-1"))
-        )
-        val engine = PromotionEngine(listOf(p))
-        val order = newOrder(
-            "Cheap" to Money.of(5.0),
-            "Expensive" to Money.of(20.0)
-        )
-        val discount = engine.computeDiscount(p, order)
-        // Buy 2, get 1 free → cheapest ($5) is free
+    fun `fixed off capped at subtotal`() {
+        val engine = PromotionEngine(listOf(
+            promotion(PromotionType.FIXED_OFF, value = Money.of(150.00))
+        ))
+        val o = order(line(100.0))
+        val discount = engine.computeDiscount(engine.applicable(o, now, zone).first(), o)
+        assertThat(discount.minorUnits).isEqualTo(10000L) // capped at 100
+    }
+
+    @Test
+    fun `BOGO discount`() {
+        val engine = PromotionEngine(listOf(
+            promotion(PromotionType.BUY_X_GET_Y, buyQty = 2, getQty = 1)
+        ))
+        val o = order(line(10.0, qty = 4))
+        val discount = engine.computeDiscount(engine.applicable(o, now, zone).first(), o)
+        // 4 items, buy 2 get 1 free = 2 free items (10 * 2 = 20)
+        assertThat(discount.minorUnits).isEqualTo(2000L)
+    }
+
+    @Test
+    fun `free item discount`() {
+        val engine = PromotionEngine(listOf(
+            promotion(PromotionType.FREE_ITEM)
+        ))
+        val o = order(line(10.0), line(5.0))
+        val discount = engine.computeDiscount(engine.applicable(o, now, zone).first(), o)
+        // cheapest item is free
         assertThat(discount.minorUnits).isEqualTo(500L)
     }
 
     @Test
-    fun `happy hour promotion gives percentage off`() {
-        val p = promo(PromotionType.HAPPY_HOUR, PromotionScope.CATEGORY, percent = 20)
-        val engine = PromotionEngine(listOf(p))
-        val order = newOrder("Cocktail" to Money.of(10.0))
-        val discount = engine.computeDiscount(p, order)
-        assertThat(discount.minorUnits).isEqualTo(200L) // 20% of $10 = $2
+    fun `happy hour discount`() {
+        val engine = PromotionEngine(listOf(
+            promotion(PromotionType.HAPPY_HOUR, percent = 50)
+        ))
+        val o = order(line(20.0))
+        val discount = engine.computeDiscount(engine.applicable(o, now, zone).first(), o)
+        assertThat(discount.minorUnits).isEqualTo(1000L)
     }
 
     @Test
-    fun `promotion only applies during its time window`() {
-        val now = java.time.LocalTime.now(zone)
-        // If it's currently 10am, a 2pm-5pm promotion should not apply
-        val p = promo(
-            PromotionType.HAPPY_HOUR, PromotionScope.ORDER, percent = 20,
-            startHour = 14, endHour = 17
+    fun `combo discount`() {
+        val engine = PromotionEngine(listOf(
+            promotion(PromotionType.COMBO, percent = 20)
+        ))
+        val o = order(line(50.0))
+        val discount = engine.computeDiscount(engine.applicable(o, now, zone).first(), o)
+        assertThat(discount.minorUnits).isEqualTo(1000L)
+    }
+
+    @Test
+    fun `loyalty reward discount`() {
+        val engine = PromotionEngine(listOf(
+            promotion(PromotionType.LOYALTY_REWARD, value = Money.of(5.00))
+        ))
+        val o = order(line(100.0))
+        val discount = engine.computeDiscount(engine.applicable(o, now, zone).first(), o)
+        assertThat(discount.minorUnits).isEqualTo(500L)
+    }
+
+    @Test
+    fun `time based filtering excludes outside window`() {
+        val engine = PromotionEngine(listOf(
+            promotion(
+                PromotionType.PERCENT_OFF,
+                percent = 10,
+                startTime = Instant.parse("2024-06-15T20:00:00Z").toEpochMilli(),
+                endTime = Instant.parse("2024-06-15T22:00:00Z").toEpochMilli()
+            )
+        ))
+        val o = order(line(100.0))
+        val applicable = engine.applicable(o, now, zone) // now is 12:00
+        assertThat(applicable).isEmpty()
+    }
+
+    @Test
+    fun `time based filtering includes inside window`() {
+        val engine = PromotionEngine(listOf(
+            promotion(
+                PromotionType.PERCENT_OFF,
+                percent = 10,
+                startTime = Instant.parse("2024-06-15T10:00:00Z").toEpochMilli(),
+                endTime = Instant.parse("2024-06-15T14:00:00Z").toEpochMilli()
+            )
+        ))
+        val o = order(line(100.0))
+        val applicable = engine.applicable(o, now, zone)
+        assertThat(applicable).hasSize(1)
+    }
+
+    @Test
+    fun `day of week filtering`() {
+        val engine = PromotionEngine(listOf(
+            promotion(
+                PromotionType.PERCENT_OFF,
+                percent = 10,
+                daysOfWeek = setOf(6) // Saturday, June 15 2024 is Saturday
+            )
+        ))
+        val o = order(line(100.0))
+        val applicable = engine.applicable(o, now, zone)
+        assertThat(applicable).hasSize(1)
+    }
+
+    @Test
+    fun `day of week filtering excludes wrong day`() {
+        val engine = PromotionEngine(listOf(
+            promotion(
+                PromotionType.PERCENT_OFF,
+                percent = 10,
+                daysOfWeek = setOf(1) // Monday
+            )
+        ))
+        val o = order(line(100.0))
+        val applicable = engine.applicable(o, now, zone)
+        assertThat(applicable).isEmpty()
+    }
+
+    @Test
+    fun `product scope filtering`() {
+        val engine = PromotionEngine(listOf(
+            promotion(
+                PromotionType.PERCENT_OFF,
+                percent = 10,
+                scope = PromotionScope.PRODUCT,
+                productIds = listOf("prod-1")
+            )
+        ))
+        val o = order(line(50.0, productId = "prod-1"), line(50.0, productId = "prod-2"))
+        val discount = engine.computeDiscount(engine.applicable(o, now, zone).first(), o)
+        assertThat(discount.minorUnits).isEqualTo(500L) // only prod-1
+    }
+
+    @Test
+    fun `category scope filtering`() {
+        val engine = PromotionEngine(listOf(
+            promotion(
+                PromotionType.PERCENT_OFF,
+                percent = 10,
+                scope = PromotionScope.CATEGORY,
+                categoryIds = listOf("cat-1")
+            )
+        ))
+        val o = order(line(50.0, categoryId = "cat-1"), line(50.0, categoryId = "cat-2"))
+        val discount = engine.computeDiscount(engine.applicable(o, now, zone).first(), o)
+        assertThat(discount.minorUnits).isEqualTo(500L)
+    }
+
+    @Test
+    fun `inactive promotion excluded`() {
+        val engine = PromotionEngine(listOf(
+            promotion(PromotionType.PERCENT_OFF, percent = 10, active = false)
+        ))
+        val o = order(line(100.0))
+        val applicable = engine.applicable(o, now, zone)
+        assertThat(applicable).isEmpty()
+    }
+
+    @Test
+    fun `applyBest returns best promotion`() {
+        val engine = PromotionEngine(listOf(
+            promotion(PromotionType.PERCENT_OFF, percent = 10, priority = 1),
+            promotion(PromotionType.PERCENT_OFF, percent = 20, priority = 2)
+        ))
+        val o = order(line(100.0))
+        val (best, discount) = engine.applyBest(o, now, zone).getOrThrow()
+        assertThat(best).isNotNull()
+        assertThat(discount.minorUnits).isEqualTo(2000L)
+    }
+
+    @Test
+    fun `applyBest with code`() {
+        val engine = PromotionEngine(listOf(
+            promotion(PromotionType.PERCENT_OFF, percent = 10, requiresCode = true, code = "SAVE10"),
+            promotion(PromotionType.PERCENT_OFF, percent = 20, requiresCode = true, code = "SAVE20")
+        ))
+        val o = order(line(100.0))
+        val (best, discount) = engine.applyBest(o, now, zone, code = "SAVE20").getOrThrow()
+        assertThat(best).isNotNull()
+        assertThat(discount.minorUnits).isEqualTo(2000L)
+    }
+
+    @Test
+    fun `applyBest returns zero when no promotions`() {
+        val engine = PromotionEngine(emptyList())
+        val o = order(line(100.0))
+        val (best, discount) = engine.applyBest(o, now, zone).getOrThrow()
+        assertThat(best).isNull()
+        assertThat(discount.isZero()).isTrue()
+    }
+
+    @Test
+    fun `priority sorting highest first`() {
+        val low = promotion(PromotionType.PERCENT_OFF, percent = 10, priority = 1)
+        val high = promotion(PromotionType.PERCENT_OFF, percent = 20, priority = 2)
+        val engine = PromotionEngine(listOf(low, high))
+        val o = order(line(100.0))
+        val applicable = engine.applicable(o, now, zone)
+        assertThat(applicable[0].priority).isEqualTo(2)
+        assertThat(applicable[1].priority).isEqualTo(1)
+    }
+
+    @Test
+    fun `cheapest item scope`() {
+        val engine = PromotionEngine(listOf(
+            promotion(PromotionType.PERCENT_OFF, percent = 10, scope = PromotionScope.CHEAPEST_ITEM)
+        ))
+        val o = order(line(100.0), line(50.0))
+        val discount = engine.computeDiscount(engine.applicable(o, now, zone).first(), o)
+        // 10% of cheapest item (50) = 5
+        assertThat(discount.minorUnits).isEqualTo(500L)
+    }
+
+    @Test
+    fun `all items scope`() {
+        val engine = PromotionEngine(listOf(
+            promotion(PromotionType.PERCENT_OFF, percent = 10, scope = PromotionScope.ALL_ITEMS)
+        ))
+        val o = order(line(100.0), line(50.0))
+        val discount = engine.computeDiscount(engine.applicable(o, now, zone).first(), o)
+        assertThat(discount.minorUnits).isEqualTo(1500L) // 10% of 150
+    }
+}
+
+class SplitTenderEngineTest {
+
+    private val engine = SplitTenderEngine()
+
+    @Test
+    fun `exact match allocation`() {
+        val result = engine.allocate(
+            Money.of(100.0),
+            listOf("CASH" to Money.of(100.0)),
+            "CASH"
+        ).getOrThrow()
+        assertThat(result).hasSize(1)
+        assertThat(result[0].amount.minorUnits).isEqualTo(10000L)
+    }
+
+    @Test
+    fun `underpayment adds remainder to default provider`() {
+        val result = engine.allocate(
+            Money.of(100.0),
+            listOf("CASH" to Money.of(60.0)),
+            "CARD"
+        ).getOrThrow()
+        assertThat(result).hasSize(2)
+        assertThat(result[0].amount.minorUnits).isEqualTo(6000L)
+        assertThat(result[1].amount.minorUnits).isEqualTo(4000L)
+        assertThat(result[1].provider).isEqualTo("CARD")
+    }
+
+    @Test
+    fun `overpayment fails`() {
+        val result = engine.allocate(
+            Money.of(100.0),
+            listOf("CASH" to Money.of(120.0)),
+            "CARD"
         )
-        val engine = PromotionEngine(listOf(p))
-        val order = newOrder("Drink" to Money.of(10.0))
-        val applicable = engine.applicable(order, System.currentTimeMillis(), zone)
-        val inWindow = now.hour in 14..16
-        assertThat(applicable.isEmpty()).isEqualTo(!inWindow)
+        assertThat(result.isFailure()).isTrue()
+    }
+
+    @Test
+    fun `multiple tenders`() {
+        val result = engine.allocate(
+            Money.of(100.0),
+            listOf("CASH" to Money.of(30.0), "CARD" to Money.of(70.0)),
+            "CASH"
+        ).getOrThrow()
+        assertThat(result).hasSize(2)
+        assertThat(result.sumOf { it.amount.minorUnits }).isEqualTo(10000L)
+    }
+
+    @Test
+    fun `empty requested adds full amount to default`() {
+        val result = engine.allocate(
+            Money.of(50.0),
+            emptyList(),
+            "CASH"
+        ).getOrThrow()
+        assertThat(result).hasSize(1)
+        assertThat(result[0].amount.minorUnits).isEqualTo(5000L)
     }
 }
 
 class TipPoolEngineTest {
 
+    private val engine = TipPoolEngine()
+    private val shiftId = com.enterprise.pos.core.Id<com.enterprise.pos.core.ShiftTag>("shift-1")
+
     @Test
-    fun `even split divides tips equally among employees`() {
-        val engine = TipPoolEngine()
-        val shiftId = ShiftId("shift-1")
-        val employees = listOf(
-            EmployeeId("emp-1") to 8.0,
-            EmployeeId("emp-2") to 8.0,
-            EmployeeId("emp-3") to 8.0
+    fun `none pool type returns zero for everyone`() {
+        val result = engine.compute(
+            shiftId,
+            Money.of(100.0),
+            listOf(
+                com.enterprise.pos.core.EmployeeId("emp-1") to 8.0,
+                com.enterprise.pos.core.EmployeeId("emp-2") to 8.0
+            ),
+            com.enterprise.pos.domain.model.TipPoolType.NONE
         )
-        val pool = engine.compute(shiftId, Money.of(120.0), employees, TipPoolType.EVEN_SPLIT)
-        assertThat(pool.entries).hasSize(3)
-        // Each gets $40, but remainder handling may shift a cent
-        pool.entries.forEach { entry ->
-            assertThat(entry.totalTakeHome.minorUnits).isIn(listOf(4000L, 4001L))
-        }
+        assertThat(result.totalTips.minorUnits).isEqualTo(10000L)
+        assertThat(result.entries).hasSize(2)
+        assertThat(result.entries.all { it.pooledTips.isZero() }).isTrue()
     }
 
     @Test
-    fun `hours weighted splits proportionally`() {
-        val engine = TipPoolEngine()
-        val shiftId = ShiftId("shift-1")
-        val employees = listOf(
-            EmployeeId("emp-1") to 8.0,
-            EmployeeId("emp-2") to 4.0
+    fun `even split divides equally`() {
+        val result = engine.compute(
+            shiftId,
+            Money.of(100.0),
+            listOf(
+                com.enterprise.pos.core.EmployeeId("emp-1") to 8.0,
+                com.enterprise.pos.core.EmployeeId("emp-2") to 8.0
+            ),
+            com.enterprise.pos.domain.model.TipPoolType.EVEN_SPLIT
         )
-        val pool = engine.compute(shiftId, Money.of(120.0), employees, TipPoolType.HOURS_WEIGHTED)
-        // 8h = $80, 4h = $40
-        assertThat(pool.entries[0].totalTakeHome.minorUnits).isEqualTo(8000L)
-        assertThat(pool.entries[1].totalTakeHome.minorUnits).isEqualTo(4000L)
+        assertThat(result.entries).hasSize(2)
+        assertThat(result.entries[0].pooledTips.minorUnits).isEqualTo(5000L)
+        assertThat(result.entries[1].pooledTips.minorUnits).isEqualTo(5000L)
     }
 
     @Test
-    fun `none pool keeps zero distribution`() {
-        val engine = TipPoolEngine()
-        val shiftId = ShiftId("shift-1")
-        val employees = listOf(EmployeeId("emp-1") to 8.0)
-        val pool = engine.compute(shiftId, Money.of(120.0), employees, TipPoolType.NONE)
-        assertThat(pool.entries[0].pooledTips.minorUnits).isEqualTo(0L)
+    fun `even split with odd total assigns remainder to first`() {
+        val result = engine.compute(
+            shiftId,
+            Money.of(100.01),
+            listOf(
+                com.enterprise.pos.core.EmployeeId("emp-1") to 8.0,
+                com.enterprise.pos.core.EmployeeId("emp-2") to 8.0
+            ),
+            com.enterprise.pos.domain.model.TipPoolType.EVEN_SPLIT
+        )
+        val totalDistributed = result.entries.sumOf { it.pooledTips.minorUnits }
+        assertThat(totalDistributed).isEqualTo(10001L)
+        // Remainder of 1 goes to first entry
+        assertThat(result.entries[0].pooledTips.minorUnits - result.entries[1].pooledTips.minorUnits).isAtMost(1L)
+    }
+
+    @Test
+    fun `even split with empty employees returns empty`() {
+        val result = engine.compute(
+            shiftId,
+            Money.of(100.0),
+            emptyList(),
+            com.enterprise.pos.domain.model.TipPoolType.EVEN_SPLIT
+        )
+        assertThat(result.entries).isEmpty()
+    }
+
+    @Test
+    fun `hours weighted split`() {
+        val result = engine.compute(
+            shiftId,
+            Money.of(100.0),
+            listOf(
+                com.enterprise.pos.core.EmployeeId("emp-1") to 8.0,
+                com.enterprise.pos.core.EmployeeId("emp-2") to 4.0
+            ),
+            com.enterprise.pos.domain.model.TipPoolType.HOURS_WEIGHTED
+        )
+        val totalHours = 12.0
+        val emp1Share = (8.0 / totalHours) * 10000L
+        assertThat(result.entries[0].pooledTips.minorUnits).isEqualTo(emp1Share.toLong())
+    }
+
+    @Test
+    fun `hours weighted with zero hours returns empty`() {
+        val result = engine.compute(
+            shiftId,
+            Money.of(100.0),
+            listOf(
+                com.enterprise.pos.core.EmployeeId("emp-1") to 0.0
+            ),
+            com.enterprise.pos.domain.model.TipPoolType.HOURS_WEIGHTED
+        )
+        assertThat(result.entries).isEmpty()
+    }
+
+    @Test
+    fun `role weighted behaves like hours weighted`() {
+        val result = engine.compute(
+            shiftId,
+            Money.of(100.0),
+            listOf(
+                com.enterprise.pos.core.EmployeeId("emp-1") to 8.0,
+                com.enterprise.pos.core.EmployeeId("emp-2") to 4.0
+            ),
+            com.enterprise.pos.domain.model.TipPoolType.ROLE_WEIGHTED
+        )
+        assertThat(result.entries).hasSize(2)
+        assertThat(result.entries.sumOf { it.pooledTips.minorUnits }).isEqualTo(10000L)
+    }
+
+    @Test
+    fun `total hours and total tips are correct`() {
+        val result = engine.compute(
+            shiftId,
+            Money.of(100.0),
+            listOf(
+                com.enterprise.pos.core.EmployeeId("emp-1") to 8.0,
+                com.enterprise.pos.core.EmployeeId("emp-2") to 4.0
+            ),
+            com.enterprise.pos.domain.model.TipPoolType.HOURS_WEIGHTED
+        )
+        assertThat(result.totalHours).isEqualTo(12.0)
+        assertThat(result.totalTips).isEqualTo(Money.of(100.0))
+    }
+}
+
+class TipSuggestionsEngineTest {
+
+    private val engine = TipSuggestionsEngine()
+
+    @Test
+    fun `percentage suggestions`() {
+        val result = engine.compute(Money.of(50.0), listOf(
+            com.enterprise.pos.domain.model.TipSuggestion.Percentage(15),
+            com.enterprise.pos.domain.model.TipSuggestion.Percentage(20)
+        ))
+        assertThat(result).hasSize(2)
+        assertThat(result[0].first).isEqualTo("15%")
+        assertThat(result[0].second.minorUnits).isEqualTo(750L)
+        assertThat(result[1].second.minorUnits).isEqualTo(1000L)
+    }
+
+    @Test
+    fun `fixed suggestion`() {
+        val result = engine.compute(Money.of(50.0), listOf(
+            com.enterprise.pos.domain.model.TipSuggestion.Fixed(Money.of(5.00))
+        ))
+        assertThat(result[0].first).isEqualTo("Fixed")
+        assertThat(result[0].second.minorUnits).isEqualTo(500L)
+    }
+
+    @Test
+    fun `custom and no tip suggestions`() {
+        val result = engine.compute(Money.of(50.0), listOf(
+            com.enterprise.pos.domain.model.TipSuggestion.Custom,
+            com.enterprise.pos.domain.model.TipSuggestion.NoTip
+        ))
+        assertThat(result[0].first).isEqualTo("Custom")
+        assertThat(result[0].second.isZero()).isTrue()
+        assertThat(result[1].first).isEqualTo("No Tip")
+        assertThat(result[1].second.isZero()).isTrue()
     }
 }
 
 class AbcAnalysisEngineTest {
 
+    private val engine = AbcAnalysisEngine()
+
     @Test
-    fun `classifies items into ABC buckets`() {
-        val engine = AbcAnalysisEngine()
+    fun `classify A items top 80 percent`() {
         val sales = listOf(
-            abcItem("A1", "Item A", 10000), // 100.00
-            abcItem("A2", "Item B", 8000),  // 80.00 -> cumulative 80%, A
-            abcItem("B1", "Item C", 5000),  // 50.00
-            abcItem("B2", "Item D", 3000),  // 30.00 -> cumulative ~95%, B
-            abcItem("C1", "Item E", 1000)   // 10.00 -> cumulative 100%, C
+            com.enterprise.pos.domain.model.AbcAnalysis(
+                productId = com.enterprise.pos.core.ProductId("p1"), productName = "A", unitsSold = 1,
+                revenue = Money.of(800.0), revenueContribution = 0.0, cumulativeContribution = 0.0, classification = com.enterprise.pos.domain.model.AbcClass.C
+            ),
+            com.enterprise.pos.domain.model.AbcAnalysis(
+                productId = com.enterprise.pos.core.ProductId("p2"), productName = "B", unitsSold = 1,
+                revenue = Money.of(150.0), revenueContribution = 0.0, cumulativeContribution = 0.0, classification = com.enterprise.pos.domain.model.AbcClass.C
+            ),
+            com.enterprise.pos.domain.model.AbcAnalysis(
+                productId = com.enterprise.pos.core.ProductId("p3"), productName = "C", unitsSold = 1,
+                revenue = Money.of(50.0), revenueContribution = 0.0, cumulativeContribution = 0.0, classification = com.enterprise.pos.domain.model.AbcClass.C
+            )
         )
-        val classified = engine.classify(sales)
-        assertThat(classified[0].classification).isEqualTo(AbcClass.A)
-        assertThat(classified[1].classification).isEqualTo(AbcClass.A)
-        // C/D land in B
-        assertThat(classified[2].classification).isEqualTo(AbcClass.B)
-        assertThat(classified[3].classification).isEqualTo(AbcClass.B)
-        // E is C
-        assertThat(classified[4].classification).isEqualTo(AbcClass.C)
-    }
-
-    private fun abcItem(id: String, name: String, revenueMinor: Long): AbcAnalysis = AbcAnalysis(
-        productId = ProductId(id), productName = name,
-        unitsSold = 10, revenue = Money.ofMinor(revenueMinor),
-        revenueContribution = 0.0, cumulativeContribution = 0.0,
-        classification = AbcClass.C
-    )
-}
-
-class SplitTenderEngineTest {
-
-    @Test
-    fun `allocates remainder to default provider when not fully covered`() {
-        val engine = SplitTenderEngine()
-        val total = Money.of(100.0)
-        val requested = listOf("STRIPE" to Money.of(60.0))
-        val splits = engine.allocate(total, requested, "CASH").getOrThrow()
-        assertThat(splits).hasSize(2)
-        assertThat(splits[0].provider).isEqualTo("STRIPE")
-        assertThat(splits[0].amount.minorUnits).isEqualTo(6000L)
-        assertThat(splits[1].provider).isEqualTo("CASH")
-        assertThat(splits[1].amount.minorUnits).isEqualTo(4000L)
+        val result = engine.classify(sales)
+        assertThat(result[0].classification).isEqualTo(com.enterprise.pos.domain.model.AbcClass.A)
+        assertThat(result[1].classification).isEqualTo(com.enterprise.pos.domain.model.AbcClass.B)
+        assertThat(result[2].classification).isEqualTo(com.enterprise.pos.domain.model.AbcClass.C)
     }
 
     @Test
-    fun `fails when over-allocated`() {
-        val engine = SplitTenderEngine()
-        val total = Money.of(50.0)
-        val requested = listOf("STRIPE" to Money.of(60.0))
-        val result = engine.allocate(total, requested, "CASH")
-        assertThat(result).isInstanceOf(com.enterprise.pos.core.Result.Failure::class.java)
+    fun `empty list returns empty`() {
+        assertThat(engine.classify(emptyList())).isEmpty()
     }
 }

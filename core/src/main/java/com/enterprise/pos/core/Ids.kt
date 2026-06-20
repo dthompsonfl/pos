@@ -48,6 +48,9 @@ typealias ShiftId = Id<ShiftTag>
 typealias ModifierGroupId = Id<ModifierGroupTag>
 
 fun randomProductId(): ProductId = Id.random()
+fun randomStoreId(): StoreId = Id.random()
+fun randomRegisterId(): RegisterId = Id.random()
+fun randomTableId(): TableId = Id.random()
 fun randomVariantId(): VariantId = Id.random()
 fun randomOrderId(): OrderId = Id.random()
 fun randomOrderLineId(): OrderLineId = Id.random()

@@ -550,7 +550,37 @@ class StoreRepositoryImpl(
     override suspend fun registers(storeId: StoreId): Result<List<com.enterprise.pos.domain.model.Register>> = Result.catching {
         dao.registersFor(storeId.value).map { it.toDomain() }
     }
+
+    override suspend fun upsertStore(store: com.enterprise.pos.domain.model.Store): Result<com.enterprise.pos.domain.model.Store> = Result.catching {
+        dao.upsertStore(store.toEntity())
+        store
+    }
+
+    override suspend fun upsertRegister(register: com.enterprise.pos.domain.model.Register): Result<com.enterprise.pos.domain.model.Register> = Result.catching {
+        dao.upsertRegisters(listOf(register.toEntity()))
+        register
+    }
 }
+
+private fun com.enterprise.pos.domain.model.Store.toEntity(): com.enterprise.pos.data.db.entity.StoreEntity =
+    com.enterprise.pos.data.db.entity.StoreEntity(
+        id = id.value,
+        name = name,
+        address = address,
+        phone = phone,
+        taxIdentifier = taxIdentifier,
+        currency = currency,
+        timezone = timezone
+    )
+
+private fun com.enterprise.pos.domain.model.Register.toEntity(): com.enterprise.pos.data.db.entity.RegisterEntity =
+    com.enterprise.pos.data.db.entity.RegisterEntity(
+        id = id.value,
+        storeId = storeId.value,
+        name = name,
+        deviceIdentifier = deviceIdentifier,
+        active = active
+    )
 
 // Helper extension to map ProductVariant -> VariantEntity
 private fun com.enterprise.pos.domain.model.ProductVariant.toEntity(productId: ProductId): com.enterprise.pos.data.db.entity.VariantEntity {
@@ -583,6 +613,8 @@ private fun com.enterprise.pos.domain.model.Product.toEntity(now: Long): com.ent
         tags = tags.joinToString(","),
         trackInventory = trackInventory,
         isAvailable = isAvailable,
+        displayOrder = displayOrder,
+        modifierGroupsJson = modifierGroupIds.joinToString(",") { it.value },
         kitchenRoutingKey = kitchenRoutingKey,
         prepTimeMinutes = prepTimeMinutes,
         updatedAt = now

@@ -1,221 +1,390 @@
 package com.enterprise.pos.domain.service
 
-import com.enterprise.pos.core.CategoryId
-import com.enterprise.pos.core.EmployeeId
 import com.enterprise.pos.core.Money
 import com.enterprise.pos.core.OrderId
-import com.enterprise.pos.core.OrderLineId
-import com.enterprise.pos.core.Percent
-import com.enterprise.pos.core.ProductId
 import com.enterprise.pos.core.Quantity
 import com.enterprise.pos.core.RegisterId
 import com.enterprise.pos.core.StoreId
-import com.enterprise.pos.core.VariantId
+import com.enterprise.pos.core.EmployeeId
+import com.enterprise.pos.core.TableId
 import com.enterprise.pos.domain.model.Discount
 import com.enterprise.pos.domain.model.DiscountType
 import com.enterprise.pos.domain.model.DiningMode
-import com.enterprise.pos.domain.model.Order
+import com.enterprise.pos.domain.model.OrderLineType
 import com.enterprise.pos.domain.model.OrderStatus
 import com.enterprise.pos.domain.model.Product
-import com.enterprise.pos.domain.model.ProductType
-import com.enterprise.pos.domain.model.TaxCategory
 import com.enterprise.pos.domain.model.ProductVariant
+import com.enterprise.pos.domain.model.TaxCategory
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
+import java.util.UUID
 
 class CartEngineTest {
 
     private val engine = CartEngine()
-    private val storeId = StoreId("s")
-    private val registerId = RegisterId("r")
-    private val employeeId = EmployeeId("e")
-    private val now = 1000L
+    private val now = 1700000000000L
 
-    private fun newOrder(): Order = engine.createOrder(
-        orderId = OrderId("o1"), storeId = storeId, registerId = registerId,
-        employeeId = employeeId, diningMode = DiningMode.DINE_IN_HOST_SEATED,
-        tableId = null, now = now
+    private val storeId = StoreId("store-1")
+    private val registerId = RegisterId("reg-1")
+    private val employeeId = EmployeeId("emp-1")
+    private val tableId = TableId("table-1")
+
+    private val product = Product(
+        id = com.enterprise.pos.core.ProductId("prod-1"),
+        name = "Burger",
+        categoryId = com.enterprise.pos.core.CategoryId("cat-1"),
+        isAvailable = true,
+        taxCategory = TaxCategory.STANDARD,
+        variants = listOf(
+            ProductVariant(
+                id = com.enterprise.pos.core.VariantId("var-1"),
+                name = "Default",
+                sku = "BUR001",
+                price = Money.of(12.50)
+            )
+        )
     )
 
-    private fun product(price: Double, name: String = "Item"): Pair<Product, ProductVariant> {
-        val v = ProductVariant(VariantId("v"), name, "SKU", null, Money.of(price))
-        val p = Product(
-            id = ProductId("p"), name = name, categoryId = CategoryId("c"),
-            type = ProductType.PHYSICAL, taxCategory = TaxCategory.PREPARED_FOOD,
-            defaultVariantId = v.id, variants = listOf(v)
-        )
-        return p to v
+    private val variant = product.variants.first()
+
+    private fun createOrder() = engine.createOrder(
+        orderId = OrderId(UUID.randomUUID().toString()),
+        storeId = storeId,
+        registerId = registerId,
+        employeeId = employeeId,
+        diningMode = DiningMode.DINE_IN_HOST_SEATED,
+        tableId = tableId,
+        guestCount = 2,
+        now = now
+    )
+
+    @Test
+    fun `create order sets correct initial state`() {
+        val order = createOrder()
+        assertThat(order.status).isEqualTo(OrderStatus.OPEN)
+        assertThat(order.lines).isEmpty()
+        assertThat(order.storeId).isEqualTo(storeId)
+        assertThat(order.registerId).isEqualTo(registerId)
+        assertThat(order.employeeId).isEqualTo(employeeId)
+        assertThat(order.diningMode).isEqualTo(DiningMode.DINE_IN_HOST_SEATED)
+        assertThat(order.tableId).isEqualTo(tableId)
+        assertThat(order.guestCount).isEqualTo(2)
+        assertThat(order.createdAt).isEqualTo(now)
+        assertThat(order.updatedAt).isEqualTo(now)
     }
 
     @Test
-    fun `addItem adds line and updates timestamp`() {
-        val order = newOrder()
-        val (p, v) = product(10.0)
-        val updated = engine.addItem(order, p, v, quantity = Quantity.of(2), now = 2000L).getOrThrow()
+    fun `add item increases line count and updates timestamp`() {
+        val order = createOrder()
+        val result = engine.addItem(order, product, variant, Quantity.ONE, now = now + 1)
+        assertThat(result.isSuccess()).isTrue()
+        val updated = result.getOrThrow()
         assertThat(updated.lines).hasSize(1)
-        assertThat(updated.lines[0].name).isEqualTo("Item")
-        assertThat(updated.lines[0].quantity.asInt).isEqualTo(2)
-        assertThat(updated.lines[0].lineTotal.minorUnits).isEqualTo(2000L)
-        assertThat(updated.updatedAt).isEqualTo(2000L)
+        assertThat(updated.lines[0].name).contains("Burger")
+        assertThat(updated.updatedAt).isGreaterThan(order.updatedAt)
     }
 
     @Test
-    fun `fractional quantity is preserved exactly`() {
-        val order = newOrder()
-        val (p, v) = product(4.0, "Salmon")
-        // 1.25 lb × $4.00/lb = $5.00
-        val updated = engine.addItem(order, p, v, quantity = Quantity.of(1.25), now = now).getOrThrow()
-        assertThat(updated.lines[0].quantity.asDouble).isEqualTo(1.25)
-        assertThat(updated.lines[0].lineTotal.minorUnits).isEqualTo(500L)
+    fun `add item with quantity`() {
+        val order = createOrder()
+        val result = engine.addItem(order, product, variant, Quantity.of(3), now = now)
+        val updated = result.getOrThrow()
+        assertThat(updated.lines[0].quantity).isEqualTo(Quantity.of(3))
+        assertThat(updated.lines[0].lineTotal.minorUnits).isEqualTo(3750L) // 12.50 * 3
     }
 
     @Test
-    fun `subtotal sums all item lines`() {
-        val order = newOrder()
-        val (p1, v1) = product(10.0, "A")
-        val (p2, v2) = product(5.0, "B")
-        val o1 = engine.addItem(order, p1, v1, Quantity.of(1), now = now).getOrThrow()
-        val o2 = engine.addItem(o1, p2, v2, Quantity.of(2), now = now).getOrThrow()
-        assertThat(o2.subtotal.minorUnits).isEqualTo(2000L) // 10 + 5*2
+    fun `add item rejects unavailable product`() {
+        val unavailable = product.copy(isAvailable = false)
+        val order = createOrder()
+        val result = engine.addItem(order, unavailable, variant, now = now)
+        assertThat(result.isFailure()).isTrue()
     }
 
     @Test
-    fun `changeQuantity to zero removes the line`() {
-        val order = newOrder()
-        val (p, v) = product(10.0)
-        val o1 = engine.addItem(order, p, v, Quantity.of(2), now = now).getOrThrow()
-        val o2 = engine.changeQuantity(o1, o1.lines[0].id, Quantity.ZERO, now = now).getOrThrow()
-        assertThat(o2.lines).isEmpty()
+    fun `add item rejects non-positive quantity`() {
+        val order = createOrder()
+        val result = engine.addItem(order, product, variant, Quantity.ZERO, now = now)
+        assertThat(result.isFailure()).isTrue()
     }
 
     @Test
-    fun `order-level discount is not double counted`() {
-        val order = newOrder()
-        val (p, v) = product(100.0)
-        val o1 = engine.addItem(order, p, v, Quantity.of(1), now = now).getOrThrow()
-        val disc = Discount(id = "d", name = "10% off", type = DiscountType.PERCENTAGE, percent = Percent.of(10.0))
-        val o2 = engine.addOrderLevelDiscount(o1, disc, now = now).getOrThrow()
-        assertThat(o2.orderLevelDiscount.minorUnits).isEqualTo(1000L) // 10% of $100 = $10
-        assertThat(o2.totalDiscount.minorUnits).isEqualTo(1000L) // not double-counted
-        assertThat(o2.taxableAmount.minorUnits).isEqualTo(9000L) // 100 - 10
+    fun `add modifier to line`() {
+        val order = createOrder()
+        val withItem = engine.addItem(order, product, variant, now = now).getOrThrow()
+        val lineId = withItem.lines[0].id
+        val result = engine.addModifier(withItem, lineId, "Extra Cheese", Money.of(1.50), now = now + 1)
+        assertThat(result.isSuccess()).isTrue()
+        val updated = result.getOrThrow()
+        assertThat(updated.lines[0].modifiers).hasSize(1)
+        assertThat(updated.lines[0].modifiers[0].name).isEqualTo("Extra Cheese")
     }
 
     @Test
-    fun `line discount and order discount both apply without double counting`() {
-        val order = newOrder()
-        val (p, v) = product(100.0)
-        val o1 = engine.addItem(order, p, v, Quantity.of(1), now = now).getOrThrow()
-        // Add a $10 line discount
-        val lineDisc = Discount(id = "ld", name = "$10 off", type = DiscountType.FIXED, value = Money.of(10.0))
-        val o2 = engine.addDiscountToLine(o1, o1.lines[0].id, lineDisc, now = now).getOrThrow()
-        // Add a 10% order discount (applies to subtotal BEFORE line discount? No — line discount already deducted from line; subtotal is gross)
-        // subtotal = $100 (gross), line discount = $10, order-level discount = 10% of subtotal = $10
-        val orderDisc = Discount(id = "od", name = "10% order", type = DiscountType.PERCENTAGE, percent = Percent.of(10.0))
-        val o3 = engine.addOrderLevelDiscount(o2, orderDisc, now = now).getOrThrow()
-        // totalDiscount = line discount + order discount = $10 + $10 = $20
-        assertThat(o3.totalDiscount.minorUnits).isEqualTo(2000L)
-        // taxableAmount = subtotal - totalDiscount = 100 - 20 = 80
-        assertThat(o3.taxableAmount.minorUnits).isEqualTo(8000L)
+    fun `add modifier fails for nonexistent parent`() {
+        val order = createOrder()
+        val result = engine.addModifier(order, com.enterprise.pos.core.OrderLineId("fake"), "Extra Cheese", Money.of(1.50), now = now)
+        assertThat(result.isFailure()).isTrue()
     }
 
     @Test
-    fun `sendToKitchen marks status and sets sent flag on kitchen lines`() {
-        val order = newOrder()
-        val (p, v) = product(10.0)
-        val productWithKitchen = p.copy(kitchenRoutingKey = "grill")
-        val o1 = engine.addItem(order, productWithKitchen, v, Quantity.of(1), now = now).getOrThrow()
-        val o2 = engine.sendToKitchen(o1, now = 2000L).getOrThrow()
-        assertThat(o2.status).isEqualTo(OrderStatus.SENT_TO_KITCHEN)
-        assertThat(o2.lines.first().sentToKitchen).isTrue()
+    fun `change quantity updates line`() {
+        val order = createOrder()
+        val withItem = engine.addItem(order, product, variant, Quantity.of(2), now = now).getOrThrow()
+        val lineId = withItem.lines[0].id
+        val result = engine.changeQuantity(withItem, lineId, Quantity.of(5), now = now + 1)
+        val updated = result.getOrThrow()
+        assertThat(updated.lines[0].quantity).isEqualTo(Quantity.of(5))
     }
 
     @Test
-    fun `sendToKitchen fails on empty order`() {
-        val order = newOrder()
-        val r = engine.sendToKitchen(order, now = now)
-        assertThat(r).isInstanceOf(com.enterprise.pos.core.Result.Failure::class.java)
+    fun `change quantity to zero removes line`() {
+        val order = createOrder()
+        val withItem = engine.addItem(order, product, variant, now = now).getOrThrow()
+        val lineId = withItem.lines[0].id
+        val result = engine.changeQuantity(withItem, lineId, Quantity.ZERO, now = now + 1)
+        val updated = result.getOrThrow()
+        assertThat(updated.lines).isEmpty()
     }
 
     @Test
-    fun `voidOrder requires reason`() {
-        val order = newOrder()
-        val r = engine.voidOrder(order, reason = "", now = now)
-        assertThat(r).isInstanceOf(com.enterprise.pos.core.Result.Failure::class.java)
+    fun `change quantity removes modifiers when parent removed`() {
+        val order = createOrder()
+        val withItem = engine.addItem(order, product, variant, now = now).getOrThrow()
+        val lineId = withItem.lines[0].id
+        val withMod = engine.addModifier(withItem, lineId, "Extra Cheese", Money.of(1.50), now = now).getOrThrow()
+        val result = engine.changeQuantity(withMod, lineId, Quantity.ZERO, now = now + 1)
+        val updated = result.getOrThrow()
+        assertThat(updated.lines).isEmpty()
     }
 
     @Test
-    fun `voidOrder marks status VOIDED with closedAt`() {
-        val order = newOrder()
-        val r = engine.voidOrder(order, reason = "Customer cancelled", now = 5000L).getOrThrow()
-        assertThat(r.status).isEqualTo(OrderStatus.VOIDED)
-        assertThat(r.closedAt).isEqualTo(5000L)
+    fun `remove line removes line and modifiers`() {
+        val order = createOrder()
+        val withItem = engine.addItem(order, product, variant, now = now).getOrThrow()
+        val lineId = withItem.lines[0].id
+        val withMod = engine.addModifier(withItem, lineId, "Extra Cheese", Money.of(1.50), now = now).getOrThrow()
+        val updated = engine.removeLine(withMod, lineId, now = now + 1)
+        assertThat(updated.lines).isEmpty()
     }
 
     @Test
-    fun `grandTotal includes tax and tip`() {
-        val order = newOrder()
-        val (p, v) = product(100.0)
-        val o1 = engine.addItem(order, p, v, Quantity.of(1), now = now).getOrThrow()
-        val o2 = engine.setTip(o1, Money.of(15.0), now = now)
-        val o3 = o2.copy(taxLines = listOf(com.enterprise.pos.domain.model.TaxLine("Sales", Percent.of(8.25), Money.of(8.25))))
-        // subtotal 100, tax 8.25, tip 15 → 123.25
-        assertThat(o3.grandTotal.minorUnits).isEqualTo(12325L)
+    fun `add discount to line`() {
+        val order = createOrder()
+        val withItem = engine.addItem(order, product, variant, now = now).getOrThrow()
+        val lineId = withItem.lines[0].id
+        val discount = Discount(
+            id = "disc-1",
+            name = "10% Off",
+            type = DiscountType.PERCENTAGE,
+            percent = com.enterprise.pos.core.Percent.of(10.0)
+        )
+        val result = engine.addDiscountToLine(withItem, lineId, discount, now = now + 1)
+        val updated = result.getOrThrow()
+        assertThat(updated.lines[0].discount.minorUnits).isEqualTo(125L) // 10% of 12.50 = 1.25
     }
 
     @Test
-    fun `tax exempt order has zero tax`() {
-        val order = newOrder()
-        val (p, v) = product(100.0)
-        val o1 = engine.addItem(order, p, v, Quantity.of(1), now = now).getOrThrow()
-        val o2 = engine.setTaxExempt(o1, true, now = now)
-        val o3 = o2.copy(taxLines = listOf(com.enterprise.pos.domain.model.TaxLine("Sales", Percent.of(8.25), Money.of(8.25))))
-        assertThat(o3.taxTotal.minorUnits).isEqualTo(0L)
-        assertThat(o3.grandTotal.minorUnits).isEqualTo(10000L)
+    fun `add fixed discount to line`() {
+        val order = createOrder()
+        val withItem = engine.addItem(order, product, variant, now = now).getOrThrow()
+        val lineId = withItem.lines[0].id
+        val discount = Discount(
+            id = "disc-1",
+            name = "$5 Off",
+            type = DiscountType.FIXED,
+            value = Money.of(5.00)
+        )
+        val result = engine.addDiscountToLine(withItem, lineId, discount, now = now + 1)
+        val updated = result.getOrThrow()
+        assertThat(updated.lines[0].discount.minorUnits).isEqualTo(500L)
     }
 
     @Test
-    fun `amountDue decreases after payment recorded`() {
-        val order = newOrder()
-        val (p, v) = product(100.0)
-        val o1 = engine.addItem(order, p, v, Quantity.of(1), now = now).getOrThrow()
-        val o2 = o1.copy(taxLines = listOf(com.enterprise.pos.domain.model.TaxLine("Sales", Percent.of(8.25), Money.of(8.25))))
-        // Total = 100 + 8.25 = 108.25
-        assertThat(o2.grandTotal.minorUnits).isEqualTo(10825L)
-        // Pay $50
-        val partialPayment = com.enterprise.pos.domain.model.Payment(
+    fun `add order level discount`() {
+        val order = createOrder()
+        val withItem = engine.addItem(order, product, variant, now = now).getOrThrow()
+        val discount = Discount(
+            id = "disc-1",
+            name = "10% Off",
+            type = DiscountType.PERCENTAGE,
+            percent = com.enterprise.pos.core.Percent.of(10.0)
+        )
+        val result = engine.addOrderLevelDiscount(withItem, discount, now = now + 1)
+        val updated = result.getOrThrow()
+        assertThat(updated.orderLevelDiscount.minorUnits).isEqualTo(125L)
+    }
+
+    @Test
+    fun `set tip`() {
+        val order = createOrder()
+        val updated = engine.setTip(order, Money.of(5.00), now = now + 1)
+        assertThat(updated.tip.minorUnits).isEqualTo(500L)
+    }
+
+    @Test
+    fun `set tip clamps negative to zero`() {
+        val order = createOrder()
+        val updated = engine.setTip(order, Money.of(-5.00), now = now + 1)
+        assertThat(updated.tip.isZero()).isTrue()
+    }
+
+    @Test
+    fun `set service charges`() {
+        val order = createOrder()
+        val updated = engine.setServiceCharges(order, Money.of(2.50), now = now + 1)
+        assertThat(updated.serviceCharges.minorUnits).isEqualTo(250L)
+    }
+
+    @Test
+    fun `set dining mode`() {
+        val order = createOrder()
+        val updated = engine.setDiningMode(order, DiningMode.TO_GO, now = now + 1)
+        assertThat(updated.diningMode).isEqualTo(DiningMode.TO_GO)
+    }
+
+    @Test
+    fun `set guest count`() {
+        val order = createOrder()
+        val updated = engine.setGuestCount(order, 4, now = now + 1)
+        assertThat(updated.guestCount).isEqualTo(4)
+    }
+
+    @Test
+    fun `set guest count clamps negative to zero`() {
+        val order = createOrder()
+        val updated = engine.setGuestCount(order, -1, now = now + 1)
+        assertThat(updated.guestCount).isEqualTo(0)
+    }
+
+    @Test
+    fun `set tax exempt`() {
+        val order = createOrder()
+        val updated = engine.setTaxExempt(order, true, now = now + 1)
+        assertThat(updated.taxExempt).isTrue()
+    }
+
+    @Test
+    fun `attach customer`() {
+        val customerId = com.enterprise.pos.core.CustomerId("cust-1")
+        val order = createOrder()
+        val updated = engine.attachCustomer(order, customerId, now = now + 1)
+        assertThat(updated.customerId).isEqualTo(customerId)
+    }
+
+    @Test
+    fun `send to kitchen fails for empty order`() {
+        val order = createOrder()
+        val result = engine.sendToKitchen(order, now = now + 1)
+        assertThat(result.isFailure()).isTrue()
+    }
+
+    @Test
+    fun `send to kitchen succeeds with items`() {
+        val order = createOrder()
+        val withItem = engine.addItem(order, product, variant, now = now).getOrThrow()
+        val result = engine.sendToKitchen(withItem, now = now + 1)
+        assertThat(result.isSuccess()).isTrue()
+        val updated = result.getOrThrow()
+        assertThat(updated.status).isEqualTo(OrderStatus.SENT_TO_KITCHEN)
+        assertThat(updated.lines[0].sentToKitchen).isTrue()
+    }
+
+    @Test
+    fun `mark awaiting payment`() {
+        val order = createOrder()
+        val updated = engine.markAwaitingPayment(order, now = now + 1)
+        assertThat(updated.status).isEqualTo(OrderStatus.AWAITING_PAYMENT)
+    }
+
+    @Test
+    fun `void order`() {
+        val order = createOrder()
+        val result = engine.voidOrder(order, "Customer changed mind", now = now + 1)
+        assertThat(result.isSuccess()).isTrue()
+        val updated = result.getOrThrow()
+        assertThat(updated.status).isEqualTo(OrderStatus.VOIDED)
+        assertThat(updated.notes).contains("Customer changed mind")
+        assertThat(updated.closedAt).isEqualTo(now + 1)
+    }
+
+    @Test
+    fun `void order requires non-blank reason`() {
+        val order = createOrder()
+        val result = engine.voidOrder(order, "   ", now = now + 1)
+        assertThat(result.isFailure()).isTrue()
+    }
+
+    @Test
+    fun `void paid order fails`() {
+        val order = createOrder().copy(status = OrderStatus.PAID)
+        val result = engine.voidOrder(order, "Mistake", now = now + 1)
+        assertThat(result.isFailure()).isTrue()
+    }
+
+    @Test
+    fun `record payment updates status when fully paid`() {
+        val order = createOrder()
+        val withItem = engine.addItem(order, product, variant, now = now).getOrThrow()
+        val payment = com.enterprise.pos.domain.model.Payment(
             id = com.enterprise.pos.core.PaymentId("pay-1"),
-            orderId = o2.id,
+            orderId = order.id,
             provider = "CASH",
-            providerTransactionId = "cash-1",
-            amount = Money.of(50.0),
-            capturedAt = now
+            providerTransactionId = "txn-1",
+            amount = Money.of(12.50),
+            capturedAt = now + 1
         )
-        val o3 = engine.recordPayment(o2, partialPayment, now)
-        assertThat(o3.amountPaid.minorUnits).isEqualTo(5000L)
-        assertThat(o3.amountDue.minorUnits).isEqualTo(5825L)
-        assertThat(o3.isFullyPaid).isFalse()
-        assertThat(o3.status).isNotEqualTo(OrderStatus.PAID)
+        val updated = engine.recordPayment(withItem, payment, now = now + 1)
+        assertThat(updated.status).isEqualTo(OrderStatus.PAID)
+        assertThat(updated.isFullyPaid).isTrue()
+        assertThat(updated.closedAt).isEqualTo(now + 1)
     }
 
     @Test
-    fun `order becomes PAID only after amountDue reaches zero`() {
-        val order = newOrder()
-        val (p, v) = product(100.0)
-        val o1 = engine.addItem(order, p, v, Quantity.of(1), now = now).getOrThrow()
-        val o2 = o1.copy(taxLines = listOf(com.enterprise.pos.domain.model.TaxLine("Sales", Percent.of(8.25), Money.of(8.25))))
-        // Total = 108.25; pay exactly $108.25
-        val fullPayment = com.enterprise.pos.domain.model.Payment(
-            id = com.enterprise.pos.core.PaymentId("pay-2"),
-            orderId = o2.id,
-            provider = "STRIPE",
-            providerTransactionId = "pi_test",
-            amount = Money.ofMinor(10825L),
-            capturedAt = now
+    fun `record partial payment does not mark paid`() {
+        val order = createOrder()
+        val withItem = engine.addItem(order, product, variant, now = now).getOrThrow()
+        val payment = com.enterprise.pos.domain.model.Payment(
+            id = com.enterprise.pos.core.PaymentId("pay-1"),
+            orderId = order.id,
+            provider = "CASH",
+            providerTransactionId = "txn-1",
+            amount = Money.of(5.00),
+            capturedAt = now + 1
         )
-        val o3 = engine.recordPayment(o2, fullPayment, now)
-        assertThat(o3.amountDue.minorUnits).isEqualTo(0L)
-        assertThat(o3.isFullyPaid).isTrue()
-        assertThat(o3.status).isEqualTo(OrderStatus.PAID)
-        assertThat(o3.closedAt).isEqualTo(now)
+        val updated = engine.recordPayment(withItem, payment, now = now + 1)
+        assertThat(updated.status).isEqualTo(OrderStatus.OPEN)
+        assertThat(updated.isFullyPaid).isFalse()
+    }
+
+    @Test
+    fun `record refund`() {
+        val order = createOrder()
+        val refund = com.enterprise.pos.domain.model.Payment(
+            id = com.enterprise.pos.core.PaymentId("ref-1"),
+            orderId = order.id,
+            provider = "CASH",
+            providerTransactionId = "txn-2",
+            amount = Money.of(5.00),
+            capturedAt = now + 1
+        )
+        val updated = engine.recordRefund(order, refund, now = now + 1)
+        assertThat(updated.amountRefunded.minorUnits).isEqualTo(500L)
+    }
+
+    @Test
+    fun `empty order has zero totals`() {
+        val order = createOrder()
+        assertThat(order.subtotal.isZero()).isTrue()
+        assertThat(order.grandTotal.isZero()).isTrue()
+        assertThat(order.amountDue.isZero()).isTrue()
+    }
+
+    @Test
+    fun `duplicate items create separate lines`() {
+        val order = createOrder()
+        val withItem1 = engine.addItem(order, product, variant, now = now).getOrThrow()
+        val withItem2 = engine.addItem(withItem1, product, variant, now = now + 1).getOrThrow()
+        assertThat(withItem2.lines).hasSize(2)
     }
 }

@@ -1,5 +1,8 @@
 package com.enterprise.pos.backend.routes
 
+import com.enterprise.pos.backend.storage.SyncEvent
+import com.enterprise.pos.backend.storage.SyncEventStatus
+import com.enterprise.pos.backend.storage.SyncEventStore
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
@@ -7,14 +10,17 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
-import java.util.concurrent.ConcurrentHashMap
+
+// ---------------------------------------------------------------------------
+// Request / Response DTOs
+// ---------------------------------------------------------------------------
 
 @Serializable
 data class SyncEventRequest(
     val eventId: String,
     val storeId: String,
-    val registerId: String?,
-    val employeeId: String?,
+    val registerId: String? = null,
+    val employeeId: String? = null,
     val entityType: String,
     val entityId: String,
     val operation: String,
@@ -26,55 +32,224 @@ data class SyncEventRequest(
 
 @Serializable
 data class SyncEventResponse(
-    val status: String, // ACCEPTED | DUPLICATE | CONFLICT | REJECTED
+    val status: String,
     val message: String? = null,
     val serverVersionJson: String? = null
 )
 
 @Serializable
-data class SyncResolveRequest(val resolution: String, val localVersionJson: String)
+data class SyncResolveRequest(
+    val resolution: String,
+    val localVersionJson: String? = null
+)
+
+@Serializable
+data class SyncQueueAckRequest(
+    val eventIds: List<String>
+)
+
+@Serializable
+data class SyncQueueAckResponse(
+    val acknowledged: Int,
+    val eventIds: List<String>
+)
+
+@Serializable
+data class SyncEventListResponse(
+    val events: List<SyncEvent>,
+    val count: Int
+)
+
+// ---------------------------------------------------------------------------
+// Route wiring
+// ---------------------------------------------------------------------------
 
 /**
- * Process-local idempotency cache used only to reject duplicate requests while the durable
- * sync store is not configured. Production deployments must replace this with a database
- * unique constraint or Redis before accepting events.
+ * Sync event routes.
+ *
+ * Rate limiting note: these endpoints should be protected by a rate limiter
+ * (e.g., Ktor RateLimit plugin or a reverse proxy like nginx) to prevent
+ * abuse of the event ingestion endpoint. A reasonable limit is 100 requests
+ * per minute per store.
  */
-private val processedKeys = ConcurrentHashMap<String, String>() // key -> eventId
-
-/** POST /v1/sync/events — receive an outbox event from the POS. */
 fun Route.syncEventsRoute() {
+    val store = SyncEventStore()
+
     authenticate("pos-api-key") {
+
+        // POST /v1/sync/events — ingest an outbox event from the POS
         post("/v1/sync/events") {
             val req = call.receive<SyncEventRequest>()
-            // Idempotency check
-            val existingEventId = processedKeys[req.idempotencyKey]
-            if (existingEventId != null) {
-                call.respond(SyncEventResponse(status = "DUPLICATE", message = "Already processed as $existingEventId"))
-                return@post
-            }
-            if (req.entityType.isBlank() || req.entityId.isBlank() || req.operation.isBlank()) {
-                call.respond(HttpStatusCode.UnprocessableEntity, SyncEventResponse(status = "REJECTED", message = "Invalid sync event"))
-                return@post
-            }
-            processedKeys[req.idempotencyKey] = req.eventId
-            call.respond(
-                HttpStatusCode.NotImplemented,
-                SyncEventResponse(
-                    status = "REJECTED",
-                    message = "Durable backend sync persistence is not configured; event was not applied"
-                )
+
+            val event = SyncEvent(
+                eventId = req.eventId,
+                storeId = req.storeId,
+                registerId = req.registerId,
+                employeeId = req.employeeId,
+                entityType = req.entityType,
+                entityId = req.entityId,
+                operation = req.operation,
+                schemaVersion = req.schemaVersion,
+                idempotencyKey = req.idempotencyKey,
+                payloadJson = req.payloadJson,
+                createdAt = req.createdAt
+            )
+
+            val result = store.storeEvent(event)
+            result.fold(
+                onSuccess = { storedEvent ->
+                    when (storedEvent.status) {
+                        SyncEventStatus.DUPLICATE ->
+                            call.respond(
+                                HttpStatusCode.OK,
+                                SyncEventResponse(
+                                    status = "DUPLICATE",
+                                    message = "Already processed as ${storedEvent.eventId}"
+                                )
+                            )
+                        else ->
+                            call.respond(
+                                HttpStatusCode.Accepted,
+                                SyncEventResponse(
+                                    status = "ACCEPTED",
+                                    message = "Event accepted and applied"
+                                )
+                            )
+                    }
+                },
+                onFailure = { error ->
+                    call.respond(
+                        HttpStatusCode.UnprocessableEntity,
+                        SyncEventResponse(
+                            status = "REJECTED",
+                            message = error.message ?: "Invalid sync event"
+                        )
+                    )
+                }
             )
         }
 
+        // POST /v1/sync/events/{id}/resolve — store conflict resolution choice
         post("/v1/sync/events/{id}/resolve") {
-            val id = call.parameters["id"] ?: return@post call.respond(HttpStatusCode.BadRequest)
-            val req = call.receive<SyncResolveRequest>()
-            call.respond(
-                HttpStatusCode.NotImplemented,
-                SyncEventResponse(
-                    status = "REJECTED",
-                    message = "Conflict resolution store is not configured for $id via ${req.resolution}"
+            val id = call.parameters["id"]
+                ?: return@post call.respond(
+                    HttpStatusCode.BadRequest,
+                    SyncEventResponse(status = "REJECTED", message = "Missing event id")
                 )
+            val req = call.receive<SyncResolveRequest>()
+
+            val result = store.resolveEvent(id, req.resolution, req.localVersionJson)
+            result.fold(
+                onSuccess = { resolvedEvent ->
+                    call.respond(
+                        HttpStatusCode.OK,
+                        SyncEventResponse(
+                            status = "RESOLVED",
+                            message = "Event $id resolved with ${req.resolution}",
+                            serverVersionJson = resolvedEvent.serverVersionJson
+                        )
+                    )
+                },
+                onFailure = { error ->
+                    call.respond(
+                        HttpStatusCode.NotFound,
+                        SyncEventResponse(
+                            status = "REJECTED",
+                            message = error.message ?: "Resolution failed"
+                        )
+                    )
+                }
+            )
+        }
+
+        // GET /v1/sync/events — query events by storeId, status, date range
+        get("/v1/sync/events") {
+            val storeId = call.request.queryParameters["storeId"]
+            val statusParam = call.request.queryParameters["status"]
+            val from = call.request.queryParameters["from"]?.toLongOrNull()
+            val to = call.request.queryParameters["to"]?.toLongOrNull()
+
+            val status = statusParam?.let { param ->
+                try {
+                    SyncEventStatus.valueOf(param.uppercase())
+                } catch (_: IllegalArgumentException) {
+                    return@get call.respond(
+                        HttpStatusCode.BadRequest,
+                        SyncEventResponse(status = "REJECTED", message = "Invalid status: $statusParam")
+                    )
+                }
+            }
+
+            val events = store.queryEvents(
+                storeId = storeId,
+                status = status,
+                fromTimestamp = from,
+                toTimestamp = to
+            )
+
+            call.respond(SyncEventListResponse(events = events, count = events.size))
+        }
+
+        // GET /v1/sync/events/{id} — get a specific event
+        get("/v1/sync/events/{id}") {
+            val id = call.parameters["id"]
+                ?: return@get call.respond(
+                    HttpStatusCode.BadRequest,
+                    SyncEventResponse(status = "REJECTED", message = "Missing event id")
+                )
+
+            val event = store.getEvent(id)
+            if (event != null) {
+                call.respond(event)
+            } else {
+                call.respond(
+                    HttpStatusCode.NotFound,
+                    SyncEventResponse(status = "REJECTED", message = "Event $id not found")
+                )
+            }
+        }
+
+        // GET /v1/sync/queue/{storeId} — get pending events for a store (POS pull)
+        get("/v1/sync/queue/{storeId}") {
+            val storeId = call.parameters["storeId"]
+                ?: return@get call.respond(
+                    HttpStatusCode.BadRequest,
+                    SyncEventResponse(status = "REJECTED", message = "Missing storeId")
+                )
+
+            val events = store.getPendingEvents(storeId)
+            call.respond(SyncEventListResponse(events = events, count = events.size))
+        }
+
+        // POST /v1/sync/queue/{storeId}/ack — acknowledge events as processed
+        post("/v1/sync/queue/{storeId}/ack") {
+            val storeId = call.parameters["storeId"]
+                ?: return@post call.respond(
+                    HttpStatusCode.BadRequest,
+                    SyncEventResponse(status = "REJECTED", message = "Missing storeId")
+                )
+            val req = call.receive<SyncQueueAckRequest>()
+
+            val result = store.acknowledgeEvents(storeId, req.eventIds)
+            result.fold(
+                onSuccess = { ackCount ->
+                    call.respond(
+                        HttpStatusCode.OK,
+                        SyncQueueAckResponse(
+                            acknowledged = ackCount,
+                            eventIds = req.eventIds
+                        )
+                    )
+                },
+                onFailure = { error ->
+                    call.respond(
+                        HttpStatusCode.InternalServerError,
+                        SyncEventResponse(
+                            status = "REJECTED",
+                            message = error.message ?: "Acknowledge failed"
+                        )
+                    )
+                }
             )
         }
     }
