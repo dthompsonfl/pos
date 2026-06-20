@@ -1,9 +1,12 @@
 package com.enterprise.pos.hardware.printer
 
+import com.enterprise.pos.core.AppError
 import com.enterprise.pos.core.Result
 import com.enterprise.pos.domain.model.Order
 import com.enterprise.pos.domain.model.OrderLineType
 import com.enterprise.pos.domain.model.Payment
+import java.net.InetSocketAddress
+import java.net.Socket
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -26,14 +29,12 @@ class ReceiptRenderer(
             txt(" ".repeat(pad) + s)
         }
 
-        // ESC @ — initialize
         raw(byteArrayOf(0x1B.toByte(), 0x40.toByte()))
-        // ESC a 1 — center
         raw(byteArrayOf(0x1B.toByte(), 0x61.toByte(), 0x01.toByte()))
         txt(storeName)
         txt(storeAddress)
         txt(storePhone)
-        raw(byteArrayOf(0x1B.toByte(), 0x61.toByte(), 0x00.toByte())) // left
+        raw(byteArrayOf(0x1B.toByte(), 0x61.toByte(), 0x00.toByte()))
         line()
 
         val date = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date(order.createdAt))
@@ -80,18 +81,16 @@ class ReceiptRenderer(
                 val prov = p.provider.padEnd(15)
                 val amt = p.amount.format().padStart(42 - 15)
                 txt("  $prov$amt")
-                p.cardBrand?.let { txt("    $it •••• ${p.last4 ?: ""}") }
+                p.cardBrand?.let { txt("    $it **** ${p.last4 ?: ""}") }
             }
             line()
         }
 
-        raw(byteArrayOf(0x1B.toByte(), 0x61.toByte(), 0x01.toByte())) // center
+        raw(byteArrayOf(0x1B.toByte(), 0x61.toByte(), 0x01.toByte()))
         txt("")
         center(footer)
         txt("")
-        // Kick the drawer: ESC pm t1 t2
         raw(byteArrayOf(0x1B.toByte(), 0x70.toByte(), 0x00.toByte(), 0x19.toByte(), 0xFA.toByte()))
-        // Cut paper: GS V 1
         raw(byteArrayOf(0x1D.toByte(), 0x56.toByte(), 0x01.toByte()))
 
         return out.toByteArray()
@@ -104,9 +103,9 @@ class ReceiptRenderer(
         fun raw(bytes: ByteArray) { bytes.forEach { out.add(it) } }
 
         raw(byteArrayOf(0x1B.toByte(), 0x40.toByte()))
-        raw(byteArrayOf(0x1B.toByte(), 0x21.toByte(), 0x30.toByte())) // double height + width
+        raw(byteArrayOf(0x1B.toByte(), 0x21.toByte(), 0x30.toByte()))
         txt("ORDER ${order.id.value.takeLast(6).uppercase()}")
-        raw(byteArrayOf(0x1B.toByte(), 0x21.toByte(), 0x00.toByte())) // reset
+        raw(byteArrayOf(0x1B.toByte(), 0x21.toByte(), 0x00.toByte()))
         txt("Table: ${order.tableName ?: order.diningMode.name}")
         txt("Guests: ${order.guestCount}")
         txt(SimpleDateFormat("HH:mm", Locale.US).format(Date(order.createdAt)))
@@ -116,7 +115,7 @@ class ReceiptRenderer(
             line0.notes?.takeIf { it.isNotBlank() }?.let { txt("    >> $it") }
         }
         txt("".padEnd(42, '-'))
-        raw(byteArrayOf(0x1D.toByte(), 0x56.toByte(), 0x01.toByte())) // cut
+        raw(byteArrayOf(0x1D.toByte(), 0x56.toByte(), 0x01.toByte()))
         return out.toByteArray()
     }
 }
@@ -130,7 +129,7 @@ interface PrinterDriver {
     suspend fun print(data: ByteArray): Result<Unit>
 }
 
-/** USB printer driver — uses Android USB Host API. */
+/** USB printer driver placeholder: fails closed until UsbManager transport is wired. */
 @Suppress("unused")
 class UsbPrinterDriver(
     override val displayName: String,
@@ -139,51 +138,64 @@ class UsbPrinterDriver(
     override var isConnected: Boolean = false
         private set
 
-    override suspend fun connect(): Result<Unit> = Result.catching {
-        require(usbDeviceId.isNotBlank()) { "USB device id is required" }
-        // Real: UsbManager.openDevice(device) → claim bulk OUT endpoint.
-        isConnected = true
+    override suspend fun connect(): Result<Unit> {
+        if (usbDeviceId.isBlank()) {
+            return Result.failure(AppError.Hardware("USB Printer", "USB device id is required"))
+        }
+        return Result.failure(AppError.Hardware("USB Printer", "USB printer transport is not implemented yet"))
     }
 
     override suspend fun disconnect(): Result<Unit> = Result.catching {
-        // Real: releaseInterface, close.
         isConnected = false
     }
 
-    override suspend fun print(data: ByteArray): Result<Unit> = Result.catching {
-        require(isConnected) { "Printer not connected" }
-        // Real: connection.bulkTransfer(endpoint, data, data.size, TIMEOUT)
-    }
+    override suspend fun print(data: ByteArray): Result<Unit> =
+        Result.failure(AppError.Hardware("USB Printer", "USB printer is not connected"))
 }
 
-/** Network printer driver — sends raw bytes over TCP port 9100. */
+/** Network printer driver — sends raw ESC/POS bytes over TCP port 9100. */
 @Suppress("unused")
 class NetworkPrinterDriver(
     override val displayName: String,
     private val host: String,
     private val port: Int = 9100
 ) : PrinterDriver {
-    override var isConnected: Boolean = false
-        private set
+    private var socket: Socket? = null
+
+    override val isConnected: Boolean
+        get() = socket?.isConnected == true && socket?.isClosed == false
 
     override suspend fun connect(): Result<Unit> = Result.catching {
         require(host.isNotBlank()) { "Printer host is required" }
         require(port in 1..65535) { "Printer port must be in 1..65535" }
-        // Real: java.net.Socket(host, port)
-        isConnected = true
+        socket?.close()
+        socket = Socket().apply {
+            connect(InetSocketAddress(host, port), CONNECT_TIMEOUT_MS)
+            tcpNoDelay = true
+        }
     }
 
     override suspend fun disconnect(): Result<Unit> = Result.catching {
-        isConnected = false
+        socket?.close()
+        socket = null
     }
 
     override suspend fun print(data: ByteArray): Result<Unit> = Result.catching {
-        require(isConnected) { "Printer not connected" }
-        // Real: socket.outputStream.write(data); flush
+        val activeSocket = requireNotNull(socket?.takeIf { it.isConnected && !it.isClosed }) {
+            "Network printer is not connected"
+        }
+        activeSocket.getOutputStream().apply {
+            write(data)
+            flush()
+        }
+    }
+
+    private companion object {
+        const val CONNECT_TIMEOUT_MS = 5_000
     }
 }
 
-/** Bluetooth printer driver — uses RFCOMM SPP. */
+/** Bluetooth printer driver placeholder: fails closed until RFCOMM transport is wired. */
 @Suppress("unused")
 class BluetoothPrinterDriver(
     override val displayName: String,
@@ -192,20 +204,19 @@ class BluetoothPrinterDriver(
     override var isConnected: Boolean = false
         private set
 
-    override suspend fun connect(): Result<Unit> = Result.catching {
-        require(macAddress.isNotBlank()) { "Bluetooth printer MAC address is required" }
-        // Real: BluetoothSocket.createRfcommSocketToServiceRecord(SPP_UUID); connect()
-        isConnected = true
+    override suspend fun connect(): Result<Unit> {
+        if (macAddress.isBlank()) {
+            return Result.failure(AppError.Hardware("Bluetooth Printer", "Bluetooth printer MAC address is required"))
+        }
+        return Result.failure(AppError.Hardware("Bluetooth Printer", "Bluetooth printer transport is not implemented yet"))
     }
 
     override suspend fun disconnect(): Result<Unit> = Result.catching {
         isConnected = false
     }
 
-    override suspend fun print(data: ByteArray): Result<Unit> = Result.catching {
-        require(isConnected) { "Printer not connected" }
-        // Real: outputStream.write(data); flush
-    }
+    override suspend fun print(data: ByteArray): Result<Unit> =
+        Result.failure(AppError.Hardware("Bluetooth Printer", "Bluetooth printer is not connected"))
 }
 
 class PrinterManager(
@@ -219,21 +230,26 @@ class PrinterManager(
 
     @Suppress("unused")
     suspend fun printReceipt(renderer: ReceiptRenderer, order: Order, payments: List<Payment>): Result<Unit> {
-        if (drivers.isEmpty()) return Result.success(Unit) // No-op when no printer registered.
+        if (drivers.isEmpty()) {
+            return Result.failure(AppError.Hardware("Printer", "No receipt printer configured"))
+        }
         val data = renderer.render(order, payments)
         var lastError: Result<Unit>? = null
-        for (d in drivers.filter { it.isConnected }) {
-            val r = d.print(data)
-            if (r is Result.Success) return r
-            lastError = r
+        for (driver in drivers.filter { it.isConnected }) {
+            val result = driver.print(data)
+            if (result is Result.Success) return result
+            lastError = result
         }
-        return lastError ?: Result.failure(com.enterprise.pos.core.AppError.Hardware("Printer", "No connected printers"))
+        return lastError ?: Result.failure(AppError.Hardware("Printer", "No connected receipt printer"))
     }
 
     @Suppress("unused")
     suspend fun printKitchenTicket(renderer: ReceiptRenderer, order: Order): Result<Unit> {
+        if (drivers.isEmpty()) {
+            return Result.failure(AppError.Hardware("Kitchen Printer", "No kitchen printer configured"))
+        }
         val data = renderer.renderKitchenTicket(order)
         return drivers.firstOrNull { it.isConnected }?.print(data)
-            ?: Result.success(Unit)
+            ?: Result.failure(AppError.Hardware("Kitchen Printer", "No connected kitchen printer"))
     }
 }
