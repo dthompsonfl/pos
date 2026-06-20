@@ -405,7 +405,7 @@ private fun CardVariantsPreview() {
                     icon = Icons.Default.ShoppingCart
                 ) {
                     Text(
-                        text = "Total: $1,245.00",
+                        text = "\$1,245.00",
                         modifier = Modifier.padding(16.dp),
                         style = MaterialTheme.typography.bodyLarge
                     )
@@ -428,7 +428,7 @@ private fun CardVariantsPreview() {
 
                 StatCard(
                     label = "Revenue",
-                    value = "$12,450",
+                    value = "\$12,450",
                     icon = Icons.Default.AttachMoney,
                     trend = "+12.5%",
                     trendPositive = true
