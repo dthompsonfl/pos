@@ -121,14 +121,13 @@ fun rememberNavigationState(
         navController.addOnDestinationChangedListener { _, destination, _ ->
             val currentRoute = destination.route
             val previousRoute = state.currentRoute
-            val backStack = navController.currentBackStack.value
             val canPop = navController.previousBackStackEntry != null
 
             val newState = NavigationState(
                 currentRoute = currentRoute,
                 previousRoute = previousRoute,
                 canPopBackStack = canPop,
-                backStackDepth = backStack.size,
+                backStackDepth = if (canPop) 2 else 1,
                 sessionId = state.sessionId
             )
 
