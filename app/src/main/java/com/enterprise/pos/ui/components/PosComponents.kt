@@ -3,7 +3,9 @@ package com.enterprise.pos.ui.components
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Inbox
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
@@ -78,7 +81,7 @@ fun PosTopBar(
         navigationIcon = {
             if (onMenuClick != null) {
                 IconButton(onClick = onMenuClick) {
-                    Icon(Icons.Filled.Search, contentDescription = "Open command search")
+                    Icon(Icons.Filled.Menu, contentDescription = "Open POS menu")
                 }
             }
         },
