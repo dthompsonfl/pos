@@ -32,7 +32,7 @@ import java.util.*
 // TextField — Standard text field with label, helper text, error state
 // ============================================================================
 @Composable
-fun PosTextField(
+private fun PosTextField(
     value: String,
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
