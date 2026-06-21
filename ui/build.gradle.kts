@@ -12,14 +12,8 @@ android {
         minSdk = 26
     }
 
-    sourceSets {
-        getByName("main") {
-            java.srcDirs("../app/src/main/java")
-            java.include("com/enterprise/pos/ui/components/**")
-            java.include("com/enterprise/pos/ui/theme/**")
-            java.exclude("com/enterprise/pos/ui/components/PosComponents.kt")
-        }
-    }
+    // Default sourceSets are now correct after moving files
+
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

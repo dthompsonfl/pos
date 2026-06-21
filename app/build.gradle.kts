@@ -76,24 +76,8 @@ android {
         }
     }
     sourceSets {
-        getByName("main") {
-            java.exclude(
-                "com/enterprise/pos/ui/components/PosBadge.kt",
-                "com/enterprise/pos/ui/components/PosButton.kt",
-                "com/enterprise/pos/ui/components/PosCard.kt",
-                "com/enterprise/pos/ui/components/PosDialog.kt",
-                "com/enterprise/pos/ui/components/PosDivider.kt",
-                "com/enterprise/pos/ui/components/PosDropdownField.kt",
-                "com/enterprise/pos/ui/components/PosEmptyState.kt",
-                "com/enterprise/pos/ui/components/PosForm.kt",
-                "com/enterprise/pos/ui/components/PosResponsive.kt",
-                "com/enterprise/pos/ui/components/PosSearch.kt",
-                "com/enterprise/pos/ui/components/PosSwitchField.kt",
-                "com/enterprise/pos/ui/components/PosTable.kt",
-                "com/enterprise/pos/ui/components/PosTextField.kt",
-                "com/enterprise/pos/ui/theme/**"
-            )
-        }
+    // Default sourceSets are now correct after moving files
+
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
