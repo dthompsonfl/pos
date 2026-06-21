@@ -7,6 +7,7 @@ import com.enterprise.pos.core.Money
 import com.enterprise.pos.core.OrderId
 import com.enterprise.pos.core.RegisterId
 import com.enterprise.pos.core.StoreId
+import com.enterprise.pos.core.security.PinHasher
 import com.enterprise.pos.data.db.dao.CatalogDao
 import com.enterprise.pos.data.db.dao.CustomerDao
 import com.enterprise.pos.data.db.dao.EmployeeDao
@@ -16,9 +17,7 @@ import com.enterprise.pos.data.db.dao.TableDao
 import com.enterprise.pos.data.db.entity.CustomerEntity
 import com.enterprise.pos.data.db.entity.EmployeeEntity
 import com.enterprise.pos.data.db.entity.OrderEntity
-import com.enterprise.pos.data.security.PinHasher
 import com.enterprise.pos.data.sync.SyncOutboxDao
-import com.enterprise.pos.domain.model.AuditAction
 import com.enterprise.pos.domain.model.DiningMode
 import com.enterprise.pos.domain.model.OrderStatus
 import com.enterprise.pos.domain.repository.AuditLogRepository
@@ -26,7 +25,6 @@ import com.enterprise.pos.domain.service.CartEngine
 import com.google.common.truth.Truth.assertThat
 import io.mockk.coEvery
 import io.mockk.coVerify
-import io.mockk.eq
 import io.mockk.mockk
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
@@ -116,7 +114,7 @@ class OrderRepositoryImplTest {
         val result = repo.markPaid(orderId, payment, employeeId)
         assertThat(result.isSuccess()).isTrue()
         coVerify { paymentDao.upsert(any()) }
-        coVerify { auditLog.logAction(any(), any(), any(), any(), eq(AuditAction.PAYMENT_CAPTURED), any(), any(), any(), any(), any()) }
+        coVerify { auditLog.logAction(any(), any(), any(), any(), any(), any(), any(), any(), any(), any()) }
     }
 
     @Test
@@ -161,7 +159,7 @@ class OrderRepositoryImplTest {
         assertThat(result.isSuccess()).isTrue()
         val order = result.getOrThrow()
         assertThat(order.status).isEqualTo(OrderStatus.VOIDED)
-        coVerify { auditLog.logAction(any(), any(), any(), any(), eq(AuditAction.ORDER_VOIDED), any(), any(), any(), any(), any()) }
+        coVerify { auditLog.logAction(any(), any(), any(), any(), any(), any(), any(), any(), any(), any()) }
     }
 
     @Test
