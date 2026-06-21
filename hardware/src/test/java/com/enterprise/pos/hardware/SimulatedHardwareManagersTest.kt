@@ -6,7 +6,10 @@ import com.enterprise.pos.hardware.display.SimulatedCustomerDisplayManager
 import com.enterprise.pos.hardware.printer.SimulatedReceiptPrinterManager
 import com.enterprise.pos.hardware.scanner.SimulatedBarcodeScannerManager
 import com.google.common.truth.Truth.assertThat
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.Test
 
 class SimulatedHardwareManagersTest {
@@ -106,11 +109,13 @@ class SimulatedHardwareManagersTest {
         val manager = SimulatedBarcodeScannerManager()
         val result = manager.initialize()
         assertThat(result.isSuccess()).isTrue()
+
+        val scan = async { manager.scans.first() }
         manager.emitScan("1234567890123", com.enterprise.pos.hardware.scanner.BarcodeFormat.EAN_13)
-        manager.scans.collect { scan ->
-            assertThat(scan.value).isEqualTo("1234567890123")
-            assertThat(scan.format).isEqualTo(com.enterprise.pos.hardware.scanner.BarcodeFormat.EAN_13)
-        }
+        val emitted = withTimeout(1_000) { scan.await() }
+
+        assertThat(emitted.value).isEqualTo("1234567890123")
+        assertThat(emitted.format).isEqualTo(com.enterprise.pos.hardware.scanner.BarcodeFormat.EAN_13)
     }
 
     @Test
