@@ -8,6 +8,14 @@ import java.text.NumberFormat
 import java.util.Currency
 import java.util.Locale
 
+private fun fallbackCurrency(): Currency = Currency.getInstance("USD")
+
+private fun defaultMoneyCurrency(): Currency =
+    runCatching { Currency.getInstance(Locale.getDefault()) }.getOrDefault(fallbackCurrency())
+
+private fun moneyFormatLocale(): Locale =
+    Locale.getDefault().takeIf { it.country.isNotBlank() } ?: Locale.US
+
 /**
  * Type-safe monetary value. All money in the entire POS flows through this class — never
  * use Double or Float for currency. Backed by Long minor-units (e.g. cents) — exact, fast,
@@ -72,8 +80,8 @@ value class Money private constructor(
 
     override fun compareTo(other: Money): Int = minorUnits.compareTo(other.minorUnits)
 
-    fun format(currency: Currency = Currency.getInstance(Locale.getDefault())): String {
-        val fmt = NumberFormat.getCurrencyInstance(Locale.getDefault())
+    fun format(currency: Currency = defaultMoneyCurrency()): String {
+        val fmt = NumberFormat.getCurrencyInstance(moneyFormatLocale())
         fmt.currency = currency
         fmt.minimumFractionDigits = 2
         fmt.maximumFractionDigits = 2
@@ -82,7 +90,7 @@ value class Money private constructor(
 
     /** Format with a fixed currency code (ISO 4217). */
     fun format(currencyCode: String): String =
-        format(runCatching { Currency.getInstance(currencyCode) }.getOrDefault(Currency.getInstance("USD")))
+        format(runCatching { Currency.getInstance(currencyCode) }.getOrDefault(fallbackCurrency()))
 
     companion object {
         val ZERO = Money(0L)
