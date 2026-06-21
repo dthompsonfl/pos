@@ -51,6 +51,15 @@ class EmployeesViewModel @Inject constructor(
         )
     }
 
+    fun setCurrentEmployee(employee: com.enterprise.pos.domain.model.Employee) {
+        _state.value = _state.value.copy(
+            currentEmployee = employee,
+            pin = "",
+            loginError = null,
+            isLoggingIn = false
+        )
+    }
+
     fun login(onSuccess: (com.enterprise.pos.domain.model.Employee) -> Unit) {
         val pin = _state.value.pin
         if (pin.length < 4) return
@@ -58,7 +67,7 @@ class EmployeesViewModel @Inject constructor(
             _state.value = _state.value.copy(isLoggingIn = true)
             repo.login(pin)
                 .onSuccess { emp ->
-                    _state.value = _state.value.copy(currentEmployee = emp, isLoggingIn = false, pin = "")
+                    setCurrentEmployee(emp)
                     onSuccess(emp)
                 }
                 .onFailure {
