@@ -123,7 +123,7 @@ private fun StepIndicator(current: Int, total: Int) {
 @Composable
 private fun WelcomeStep(
     progress: OnboardingProgress,
-    update: (OnboardingProgress. -> OnboardingProgress) -> Unit
+    update: (OnboardingProgress.() -> OnboardingProgress) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Icon(Icons.Default.RocketLaunch, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.primary)
@@ -142,7 +142,7 @@ private fun WelcomeStep(
 @Composable
 private fun StoreStep(
     progress: OnboardingProgress,
-    update: (OnboardingProgress. -> OnboardingProgress) -> Unit
+    update: (OnboardingProgress.() -> OnboardingProgress) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("Store Setup", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
@@ -158,7 +158,7 @@ private fun StoreStep(
 @Composable
 private fun RegisterStep(
     progress: OnboardingProgress,
-    update: (OnboardingProgress. -> OnboardingProgress) -> Unit
+    update: (OnboardingProgress.() -> OnboardingProgress) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("Register Setup", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
@@ -171,7 +171,7 @@ private fun RegisterStep(
 @Composable
 private fun EmployeeStep(
     progress: OnboardingProgress,
-    update: (OnboardingProgress. -> OnboardingProgress) -> Unit
+    update: (OnboardingProgress.() -> OnboardingProgress) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("Create Admin Account", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
@@ -197,7 +197,7 @@ private fun ProductStep(
 }
 
 @Composable
-private fun PaymentStep(update: (OnboardingProgress. -> OnboardingProgress) -> Unit) {
+private fun PaymentStep(update: (OnboardingProgress.() -> OnboardingProgress) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("Payment Setup", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Text("Cash payments are always available.", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)

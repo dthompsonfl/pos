@@ -21,7 +21,7 @@ import com.enterprise.pos.core.StoreId
 import com.enterprise.pos.core.VariantId
 import com.enterprise.pos.domain.model.AdjustmentReason
 import com.enterprise.pos.domain.model.InventoryItem
-import com.enterprise.pos.domain.model.Money
+import com.enterprise.pos.core.Money
 import com.enterprise.pos.feature.inventory.state.StockAdjustmentEvent
 import com.enterprise.pos.feature.inventory.state.StockAdjustmentUiState
 import com.enterprise.pos.feature.inventory.state.StockAdjustmentViewModel
@@ -208,73 +208,6 @@ private fun InfoColumn(label: String, value: String) {
     Column {
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun StockAdjustmentScreenPreview() {
-    PosTheme {
-        Surface {
-            Column(modifier = Modifier.padding(16.dp)) {
-                ProductSummaryCard(
-                    InventoryItem(
-                        variantId = com.enterprise.pos.core.VariantId("v1"),
-                        storeId = com.enterprise.pos.core.StoreId("s1"),
-                        productName = "Organic Coffee Beans",
-                        sku = "OCB-001",
-                        onHand = 45,
-                        available = 40,
-                        location = "A-12-3"
-                    )
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                FormSection(title = "Adjustment Details") {
-                    AdjustmentForm(
-                        state = StockAdjustmentUiState(
-                            form = com.enterprise.pos.feature.inventory.state.StockAdjustmentForm(
-                                productName = "Organic Coffee Beans",
-                                currentQuantity = 45,
-                                adjustmentQuantity = "-5",
-                                newQuantity = 40
-                            )
-                        ),
-                        viewModel = object : StockAdjustmentViewModel(
-                            inventoryRepo = object : com.enterprise.pos.domain.repository.InventoryManagementRepository {
-                                override fun observeLowStock(storeId: com.enterprise.pos.core.StoreId) = kotlinx.coroutines.flow.emptyFlow()
-                                override fun observeAdjustments(storeId: com.enterprise.pos.core.StoreId, variantId: com.enterprise.pos.core.VariantId?) = kotlinx.coroutines.flow.emptyFlow()
-                                override fun observeTransfers(storeId: com.enterprise.pos.core.StoreId) = kotlinx.coroutines.flow.emptyFlow()
-                                override suspend fun adjust(adjustment: com.enterprise.pos.domain.model.InventoryAdjustment) = com.enterprise.pos.core.Result.success(adjustment)
-                                override suspend fun createTransfer(transfer: com.enterprise.pos.domain.model.InventoryTransfer) = com.enterprise.pos.core.Result.success(transfer)
-                                override suspend fun receiveTransfer(transferId: com.enterprise.pos.core.Id<com.enterprise.pos.domain.model.InventoryTransferTag>, receivedLines: List<com.enterprise.pos.domain.model.TransferLine>) = com.enterprise.pos.core.Result.success(transfer)
-                                override suspend fun reorder(variantId: com.enterprise.pos.core.VariantId, storeId: com.enterprise.pos.core.StoreId, qty: Int) = com.enterprise.pos.core.Result.success(Unit)
-                                override suspend fun reorderAll(storeId: com.enterprise.pos.core.StoreId) = com.enterprise.pos.core.Result.success(0)
-                                override suspend fun valuation(storeId: com.enterprise.pos.core.StoreId) = com.enterprise.pos.core.Result.success(Money.ZERO)
-                                override suspend fun getInventoryItem(variantId: com.enterprise.pos.core.VariantId, storeId: com.enterprise.pos.core.StoreId) = com.enterprise.pos.core.Result.success(null)
-                                override fun observeStockMovements(storeId: com.enterprise.pos.core.StoreId, variantId: com.enterprise.pos.core.VariantId) = kotlinx.coroutines.flow.emptyFlow()
-                                override suspend fun setReorderPoint(variantId: com.enterprise.pos.core.VariantId, storeId: com.enterprise.pos.core.StoreId, point: Int, qty: Int) = com.enterprise.pos.core.Result.success(Unit)
-                                override suspend fun getSupplier(id: com.enterprise.pos.core.Id<com.enterprise.pos.domain.model.SupplierTag>) = com.enterprise.pos.core.Result.success(null)
-                                override fun observeSuppliers(storeId: com.enterprise.pos.core.StoreId) = kotlinx.coroutines.flow.emptyFlow()
-                                override suspend fun getSupplierPerformance(supplierId: com.enterprise.pos.core.Id<com.enterprise.pos.domain.model.SupplierTag>) = com.enterprise.pos.core.Result.success(null)
-                                override suspend fun observePurchaseOrders(storeId: com.enterprise.pos.core.StoreId, supplierId: com.enterprise.pos.core.Id<com.enterprise.pos.domain.model.SupplierTag>?) = kotlinx.coroutines.flow.emptyFlow()
-                                override suspend fun getPurchaseOrder(id: com.enterprise.pos.core.Id<com.enterprise.pos.domain.model.PurchaseOrderTag>) = com.enterprise.pos.core.Result.success(null)
-                                override suspend fun upsertPurchaseOrder(po: com.enterprise.pos.domain.model.PurchaseOrder) = com.enterprise.pos.core.Result.success(po)
-                                override suspend fun sendPurchaseOrder(id: com.enterprise.pos.core.Id<com.enterprise.pos.domain.model.PurchaseOrderTag>) = com.enterprise.pos.core.Result.success(null)
-                                override suspend fun receivePurchaseOrder(id: com.enterprise.pos.core.Id<com.enterprise.pos.domain.model.PurchaseOrderTag>) = com.enterprise.pos.core.Result.success(null)
-                                override suspend fun cancelPurchaseOrder(id: com.enterprise.pos.core.Id<com.enterprise.pos.domain.model.PurchaseOrderTag>) = com.enterprise.pos.core.Result.success(null)
-                            }
-                        ) {}
-                    )
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-                PrimaryButton(
-                    text = "Save Adjustment",
-                    onClick = {},
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    icon = Icons.Default.Save
-                )
-            }
-        }
     }
 }
 

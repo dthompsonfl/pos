@@ -119,7 +119,7 @@ fun <T> DataTable(
                 }
             }
         }
-        Divider(color = MaterialTheme.colorScheme.outlineVariant)
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
         // Rows
         sortedItems.forEach { item ->
@@ -164,7 +164,7 @@ fun <T> DataTable(
                     }
                 }
             }
-            Divider(color = MaterialTheme.colorScheme.outlineVariant)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         }
     }
 }
@@ -267,7 +267,7 @@ fun <T> ExpandableTable(
                 }
             }
         }
-        Divider(color = MaterialTheme.colorScheme.outlineVariant)
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
         items.forEach { item ->
             val key = keyExtractor(item)
@@ -305,7 +305,7 @@ fun <T> ExpandableTable(
                         }
                     }
                 }
-                Divider(color = MaterialTheme.colorScheme.outlineVariant)
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             }
         }
     }
@@ -359,7 +359,7 @@ fun <T> ActionTable(
                 )
             }
         }
-        Divider(color = MaterialTheme.colorScheme.outlineVariant)
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
         items.forEach { item ->
             Row(
@@ -393,7 +393,7 @@ fun <T> ActionTable(
                     }
                 }
             }
-            Divider(color = MaterialTheme.colorScheme.outlineVariant)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         }
     }
 }

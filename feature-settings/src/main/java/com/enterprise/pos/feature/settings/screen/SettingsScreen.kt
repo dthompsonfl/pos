@@ -1,6 +1,7 @@
 package com.enterprise.pos.feature.settings.screen
 
 import androidx.compose.animation.AnimatedVisibility
+import java.util.Locale
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope

@@ -3,7 +3,7 @@ package com.enterprise.pos.ui.components
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -48,14 +48,14 @@ fun TextDivider(
                     color = textColor,
                     modifier = Modifier.padding(end = 8.dp)
                 )
-                Divider(
+                HorizontalDivider(
                     modifier = Modifier.weight(1f),
                     color = color,
                     thickness = thickness
                 )
             }
             TextDividerPosition.MIDDLE -> {
-                Divider(
+                HorizontalDivider(
                     modifier = Modifier.weight(1f),
                     color = color,
                     thickness = thickness
@@ -67,14 +67,14 @@ fun TextDivider(
                     modifier = Modifier.padding(horizontal = 8.dp),
                     textAlign = TextAlign.Center
                 )
-                Divider(
+                HorizontalDivider(
                     modifier = Modifier.weight(1f),
                     color = color,
                     thickness = thickness
                 )
             }
             TextDividerPosition.END -> {
-                Divider(
+                HorizontalDivider(
                     modifier = Modifier.weight(1f),
                     color = color,
                     thickness = thickness
@@ -152,7 +152,7 @@ fun ThickDivider(
     color: Color = MaterialTheme.colorScheme.outline,
     thickness: Dp = 2.dp
 ) {
-    Divider(
+    HorizontalDivider(
         modifier = modifier
             .fillMaxWidth()
             .semantics { contentDescription = "Section divider" },
@@ -171,7 +171,7 @@ fun SpacedDivider(
     color: Color = MaterialTheme.colorScheme.outlineVariant
 ) {
     Spacer(modifier = Modifier.height(verticalPadding))
-    Divider(
+    HorizontalDivider(
         modifier = modifier
             .fillMaxWidth()
             .semantics { contentDescription = "Divider" },

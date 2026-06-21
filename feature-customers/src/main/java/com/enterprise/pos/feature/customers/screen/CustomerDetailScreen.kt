@@ -211,7 +211,7 @@ fun CustomerDetailScreen(
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
             title = { Text("Delete Customer") },
-            text = { Text("This will permanently delete ${customer?.name ?: "this customer"}. This action cannot be undone.") },
+            text = { Text("This will permanently delete ${state.customer?.name ?: "this customer"}. This action cannot be undone.") },
             confirmButton = {
                 Button(
                     onClick = { viewModel.deleteCustomer(customerId); showDeleteDialog = false },

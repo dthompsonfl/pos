@@ -63,13 +63,13 @@ class SupplierDetailViewModel @Inject constructor(
                     _state.value = _state.value.copy(error = err.message)
                 }
             _state.value = _state.value.copy(isLoading = false)
-        }
 
-        inventoryRepo.observePurchaseOrders(storeId, supplierId)
-            .onEach { orders ->
-                _state.value = _state.value.copy(orders = orders.sortedByDescending { it.orderDate })
-            }
-            .launchIn(viewModelScope)
+            inventoryRepo.observePurchaseOrders(storeId, supplierId)
+                .onEach { orders ->
+                    _state.value = _state.value.copy(orders = orders.sortedByDescending { it.orderDate })
+                }
+                .launchIn(viewModelScope)
+        }
     }
 
     fun createPurchaseOrder() {

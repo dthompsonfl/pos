@@ -101,6 +101,7 @@ interface InventoryManagementRepository {
     suspend fun upsertPurchaseOrder(po: com.enterprise.pos.domain.model.PurchaseOrder): Result<com.enterprise.pos.domain.model.PurchaseOrder>
     suspend fun sendPurchaseOrder(id: Id<com.enterprise.pos.domain.model.PurchaseOrderTag>): Result<com.enterprise.pos.domain.model.PurchaseOrder>
     suspend fun receivePurchaseOrder(id: Id<com.enterprise.pos.domain.model.PurchaseOrderTag>): Result<com.enterprise.pos.domain.model.PurchaseOrder>
+    suspend fun cancelPurchaseOrder(id: Id<com.enterprise.pos.domain.model.PurchaseOrderTag>): Result<com.enterprise.pos.domain.model.PurchaseOrder>
     suspend fun deleteSupplier(id: Id<com.enterprise.pos.domain.model.SupplierTag>): Result<Unit>
 }
 

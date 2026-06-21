@@ -99,8 +99,4 @@ object HardwareModule {
     ): KitchenDisplayManager {
         return InMemoryKitchenDisplayManager(context, logger)
     }
-
-    @Provides
-    @Singleton
-    fun provideHardwareLogger(): Logger = NoopLogger
 }

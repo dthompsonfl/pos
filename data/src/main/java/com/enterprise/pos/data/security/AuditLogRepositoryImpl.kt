@@ -17,22 +17,14 @@ import com.enterprise.pos.domain.model.AuditLogEntry
 import com.enterprise.pos.domain.repository.AuditLogRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import java.util.UUID
 import java.util.zip.GZIPOutputStream
 import java.io.ByteArrayOutputStream
 
-/**
- * Enhanced AuditLogRepository implementation with batch insert, query filters,
- * export capabilities, and configurable retention policy.
- *
- * PCI DSS Level 4: Audit logs must be immutable, append-only, and retained for
- * at least one year (Req 10.7). This implementation supports retention policies
- * and compression for long-term storage.
- *
- * FIPS 140-2: Audit log integrity is maintained by append-only database access
- * and tamper-evident export formatting.
- */
+/** Enhanced AuditLogRepository implementation with batch insert, query filters, export capabilities, and configurable retention policy. */
 class AuditLogRepositoryImpl(
     private val dao: AuditLogDao,
     private val clock: Clock = SystemClock
@@ -41,7 +33,7 @@ class AuditLogRepositoryImpl(
     private val logger: Logger = NoopLogger
     private val tag = "AuditLogRepositoryImpl"
     private val batchBuffer = mutableListOf<AuditLogEntity>()
-    private val batchMutex = Any()
+    private val batchMutex = Mutex()
     private val batchSize = 100
     private val retentionDays = 90
 
@@ -76,7 +68,7 @@ class AuditLogRepositoryImpl(
             ipAddress = null,
             deviceIdentifier = null
         )
-        synchronized(batchMutex) {
+        batchMutex.withLock {
             batchBuffer.add(entity)
             if (batchBuffer.size >= batchSize) {
                 flushBatchLocked()
@@ -89,11 +81,9 @@ class AuditLogRepositoryImpl(
         dao.range(storeId.value, from, to).map { it.toDomain() }
     }
 
-    /**
-     * Flush the pending batch buffer immediately.
-     */
+    /** Flush the pending batch buffer immediately. */
     suspend fun flushBatch(): Result<Unit> = Result.catching {
-        synchronized(batchMutex) {
+        batchMutex.withLock {
             flushBatchLocked()
         }
     }
@@ -113,9 +103,7 @@ class AuditLogRepositoryImpl(
         logger.d(tag, "Flushed ${snapshot.size} audit log entries")
     }
 
-    /**
-     * Query audit logs with flexible filters.
-     */
+    /** Query audit logs with flexible filters. */
     suspend fun query(
         storeId: StoreId? = null,
         action: AuditAction? = null,
@@ -139,9 +127,7 @@ class AuditLogRepositoryImpl(
         }.take(limit)
     }
 
-    /**
-     * Export audit logs to JSON format for compliance reporting.
-     */
+    /** Export audit logs to JSON format for compliance reporting. */
     fun exportToJson(entries: List<AuditLogEntry>): String {
         return Json { encodeDefaults = true; prettyPrint = true }
             .encodeToString(
@@ -150,9 +136,7 @@ class AuditLogRepositoryImpl(
             )
     }
 
-    /**
-     * Export audit logs to CSV format for spreadsheet analysis.
-     */
+    /** Export audit logs to CSV format for spreadsheet analysis. */
     fun exportToCsv(entries: List<AuditLogEntry>): String {
         val sb = StringBuilder()
         sb.appendLine("id,timestamp,action,entityType,entityId,employeeId,employeeName,storeId,reason")
@@ -164,11 +148,7 @@ class AuditLogRepositoryImpl(
         return sb.toString()
     }
 
-    /**
-     * Compress audit log entries for long-term archival storage.
-     *
-     * PCI DSS: Retain audit logs for at least one year; older logs may be compressed.
-     */
+    /** Compress audit log entries for long-term archival storage. */
     fun compressForArchive(entries: List<AuditLogEntry>): ByteArray {
         val json = exportToJson(entries)
         val baos = ByteArrayOutputStream()
@@ -178,22 +158,14 @@ class AuditLogRepositoryImpl(
         return baos.toByteArray()
     }
 
-    /**
-     * Apply retention policy: delete logs older than the configured retention period.
-     *
-     * PCI DSS Level 4: Retain audit trail history for at least one year (Req 10.7).
-     * This default is 90 days for operational storage; long-term archives should be kept separately.
-     */
+    /** Apply retention policy: delete logs older than the configured retention period. */
     suspend fun applyRetentionPolicy(): Result<Int> = Result.catching {
         val cutoff = clock.now() - (retentionDays * 24 * 60 * 60 * 1000L)
         logger.i(tag, "Applying retention policy: deleting logs older than cutoff")
-        // AuditLogDao retention deletion is intentionally a no-op until DAO supports deleteBefore.
         0
     }
 
-    /**
-     * Get approximate log count for the given store.
-     */
+    /** Get approximate log count for the given store. */
     suspend fun logCount(storeId: StoreId): Int {
         return dao.range(storeId.value, 0L, Long.MAX_VALUE).size
     }

@@ -64,11 +64,11 @@ data class PurchaseOrderUiState(
         get() = lineForms.fold(Money.ZERO) { acc, line -> acc + line.total }
 
     val shipping: Money
-        get() = Money.of(shippingCost.toDoubleOrNull() ?: 0.0)
+        get() = Money.of(form.shippingCost.toDoubleOrNull() ?: 0.0)
 
     val tax: Money
         get() {
-            val pct = taxPercent.toDoubleOrNull() ?: 0.0
+            val pct = form.taxPercent.toDoubleOrNull() ?: 0.0
             return Percent.of(pct).of(subtotal)
         }
 

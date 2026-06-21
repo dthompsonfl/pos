@@ -1,5 +1,6 @@
 package com.enterprise.pos.feature.restaurant.screen
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -387,28 +388,28 @@ private fun TableDetailScreenPreview() {
                         status = TableStatus.SEATED,
                         currentGuestCount = 3
                     ),
-                    viewModel = object : TableDetailViewModel(
+                    viewModel = TableDetailViewModel(
                         orderRepo = object : com.enterprise.pos.domain.repository.OrderRepository {
-                            override fun observeOpenOrders(storeId: StoreId) = kotlinx.coroutines.flow.emptyFlow()
-                            override fun observeOrder(orderId: OrderId) = kotlinx.coroutines.flow.emptyFlow()
-                            override fun observeOrdersByTable(tableId: TableId) = kotlinx.coroutines.flow.emptyFlow()
-                            override fun observeTables(storeId: StoreId) = kotlinx.coroutines.flow.emptyFlow()
-                            override suspend fun createOrder(storeId: StoreId, registerId: com.enterprise.pos.core.RegisterId, employeeId: EmployeeId, diningMode: com.enterprise.pos.domain.model.DiningMode, tableId: TableId?, guestCount: Int) = com.enterprise.pos.core.Result.success(com.enterprise.pos.domain.model.Order(id = OrderId(""), storeId = storeId, registerId = com.enterprise.pos.core.RegisterId(""), employeeId = EmployeeId("")))
+                            override fun observeOpenOrders(storeId: StoreId) = kotlinx.coroutines.flow.emptyFlow<List<Order>>()
+                            override fun observeOrder(orderId: OrderId) = kotlinx.coroutines.flow.emptyFlow<Order?>()
+                            override fun observeOrdersByTable(tableId: TableId) = kotlinx.coroutines.flow.emptyFlow<List<Order>>()
+                            override fun observeTables(storeId: StoreId) = kotlinx.coroutines.flow.emptyFlow<List<RestaurantTable>>()
+                            override suspend fun createOrder(storeId: StoreId, registerId: com.enterprise.pos.core.RegisterId, employeeId: EmployeeId, diningMode: com.enterprise.pos.domain.model.DiningMode, tableId: TableId?, guestCount: Int) = com.enterprise.pos.core.Result.success(com.enterprise.pos.domain.model.Order(id = OrderId(""), storeId = StoreId(""), registerId = com.enterprise.pos.core.RegisterId(""), employeeId = EmployeeId("")))
                             override suspend fun updateOrder(order: Order) = com.enterprise.pos.core.Result.success(order)
-                            override suspend fun setStatus(orderId: OrderId, status: OrderStatus) = com.enterprise.pos.core.Result.success(order)
-                            override suspend fun assignTable(orderId: OrderId, tableId: TableId?) = com.enterprise.pos.core.Result.success(com.enterprise.pos.domain.model.Order(id = OrderId(""), storeId = storeId, registerId = com.enterprise.pos.core.RegisterId(""), employeeId = EmployeeId("")))
+                            override suspend fun setStatus(orderId: OrderId, status: OrderStatus) = com.enterprise.pos.core.Result.success(com.enterprise.pos.domain.model.Order(id = orderId, storeId = StoreId(""), registerId = com.enterprise.pos.core.RegisterId(""), employeeId = EmployeeId("")))
+                            override suspend fun assignTable(orderId: OrderId, tableId: TableId?) = com.enterprise.pos.core.Result.success(com.enterprise.pos.domain.model.Order(id = OrderId(""), storeId = StoreId(""), registerId = com.enterprise.pos.core.RegisterId(""), employeeId = EmployeeId("")))
                             override suspend fun assignServer(tableId: TableId, serverId: EmployeeId?) = com.enterprise.pos.core.Result.success(Unit)
                             override suspend fun setTableStatus(tableId: TableId, status: TableStatus) = com.enterprise.pos.core.Result.success(Unit)
                             override suspend fun getById(orderId: OrderId) = com.enterprise.pos.core.Result.success<Order?>(null)
-                            override suspend fun closeOrder(orderId: OrderId) = com.enterprise.pos.core.Result.success(com.enterprise.pos.domain.model.Order(id = OrderId(""), storeId = storeId, registerId = com.enterprise.pos.core.RegisterId(""), employeeId = EmployeeId("")))
+                            override suspend fun closeOrder(orderId: OrderId) = com.enterprise.pos.core.Result.success(com.enterprise.pos.domain.model.Order(id = OrderId(""), storeId = StoreId(""), registerId = com.enterprise.pos.core.RegisterId(""), employeeId = EmployeeId("")))
                             override suspend fun recentOrders(storeId: StoreId, limit: Int) = com.enterprise.pos.core.Result.success(emptyList<Order>())
-                            override suspend fun markPaid(orderId: OrderId, payment: com.enterprise.pos.domain.model.Payment, employeeId: EmployeeId) = com.enterprise.pos.core.Result.success(com.enterprise.pos.domain.model.Order(id = OrderId(""), storeId = storeId, registerId = com.enterprise.pos.core.RegisterId(""), employeeId = EmployeeId("")))
-                            override suspend fun refund(orderId: OrderId, refund: com.enterprise.pos.domain.model.Payment, reason: String, employeeId: EmployeeId) = com.enterprise.pos.core.Result.success(com.enterprise.pos.domain.model.Order(id = OrderId(""), storeId = storeId, registerId = com.enterprise.pos.core.RegisterId(""), employeeId = EmployeeId("")))
-                            override suspend fun voidOrder(orderId: OrderId, reason: String, employeeId: EmployeeId) = com.enterprise.pos.core.Result.success(com.enterprise.pos.domain.model.Order(id = OrderId(""), storeId = storeId, registerId = com.enterprise.pos.core.RegisterId(""), employeeId = EmployeeId("")))
+                            override suspend fun markPaid(orderId: OrderId, payment: com.enterprise.pos.domain.model.Payment, employeeId: EmployeeId) = com.enterprise.pos.core.Result.success(com.enterprise.pos.domain.model.Order(id = OrderId(""), storeId = StoreId(""), registerId = com.enterprise.pos.core.RegisterId(""), employeeId = EmployeeId("")))
+                            override suspend fun refund(orderId: OrderId, refund: com.enterprise.pos.domain.model.Payment, reason: String, employeeId: EmployeeId) = com.enterprise.pos.core.Result.success(com.enterprise.pos.domain.model.Order(id = OrderId(""), storeId = StoreId(""), registerId = com.enterprise.pos.core.RegisterId(""), employeeId = EmployeeId("")))
+                            override suspend fun voidOrder(orderId: OrderId, reason: String, employeeId: EmployeeId) = com.enterprise.pos.core.Result.success(com.enterprise.pos.domain.model.Order(id = OrderId(""), storeId = StoreId(""), registerId = com.enterprise.pos.core.RegisterId(""), employeeId = EmployeeId("")))
                         },
                         reservationRepo = object : com.enterprise.pos.domain.repository.ReservationRepository {
-                            override fun observeReservations(storeId: StoreId, date: Long) = kotlinx.coroutines.flow.emptyFlow()
-                            override fun observeUpcoming(storeId: StoreId, hours: Int) = kotlinx.coroutines.flow.emptyFlow()
+                            override fun observeReservations(storeId: StoreId, date: Long) = kotlinx.coroutines.flow.emptyFlow<List<Reservation>>()
+                            override fun observeUpcoming(storeId: StoreId, hours: Int) = kotlinx.coroutines.flow.emptyFlow<List<Reservation>>()
                             override suspend fun get(id: com.enterprise.pos.core.Id<com.enterprise.pos.domain.model.ReservationTag>) = com.enterprise.pos.core.Result.success<Reservation?>(null)
                             override suspend fun upsert(r: Reservation) = com.enterprise.pos.core.Result.success(r)
                             override suspend fun setStatus(id: com.enterprise.pos.core.Id<com.enterprise.pos.domain.model.ReservationTag>, status: ReservationStatus) = com.enterprise.pos.core.Result.success(Unit)
@@ -416,7 +417,7 @@ private fun TableDetailScreenPreview() {
                             override suspend fun cancel(id: com.enterprise.pos.core.Id<com.enterprise.pos.domain.model.ReservationTag>, reason: String) = com.enterprise.pos.core.Result.success(Unit)
                             override suspend fun checkTableAvailability(storeId: StoreId, date: Long, partySize: Int) = com.enterprise.pos.core.Result.success(emptyList<RestaurantTable>())
                         }
-                    ) {}
+                    )
                 , state = TableDetailUiState())
                 CurrentOrderCard(
                     Order(
@@ -428,28 +429,28 @@ private fun TableDetailScreenPreview() {
                         guestCount = 3,
                         lines = emptyList()
                     ),
-                    viewModel = object : TableDetailViewModel(
+                    viewModel = TableDetailViewModel(
                         orderRepo = object : com.enterprise.pos.domain.repository.OrderRepository {
-                            override fun observeOpenOrders(storeId: StoreId) = kotlinx.coroutines.flow.emptyFlow()
-                            override fun observeOrder(orderId: OrderId) = kotlinx.coroutines.flow.emptyFlow()
-                            override fun observeOrdersByTable(tableId: TableId) = kotlinx.coroutines.flow.emptyFlow()
-                            override fun observeTables(storeId: StoreId) = kotlinx.coroutines.flow.emptyFlow()
-                            override suspend fun createOrder(storeId: StoreId, registerId: com.enterprise.pos.core.RegisterId, employeeId: EmployeeId, diningMode: com.enterprise.pos.domain.model.DiningMode, tableId: TableId?, guestCount: Int) = com.enterprise.pos.core.Result.success(com.enterprise.pos.domain.model.Order(id = OrderId(""), storeId = storeId, registerId = com.enterprise.pos.core.RegisterId(""), employeeId = EmployeeId("")))
+                            override fun observeOpenOrders(storeId: StoreId) = kotlinx.coroutines.flow.emptyFlow<List<Order>>()
+                            override fun observeOrder(orderId: OrderId) = kotlinx.coroutines.flow.emptyFlow<Order?>()
+                            override fun observeOrdersByTable(tableId: TableId) = kotlinx.coroutines.flow.emptyFlow<List<Order>>()
+                            override fun observeTables(storeId: StoreId) = kotlinx.coroutines.flow.emptyFlow<List<RestaurantTable>>()
+                            override suspend fun createOrder(storeId: StoreId, registerId: com.enterprise.pos.core.RegisterId, employeeId: EmployeeId, diningMode: com.enterprise.pos.domain.model.DiningMode, tableId: TableId?, guestCount: Int) = com.enterprise.pos.core.Result.success(com.enterprise.pos.domain.model.Order(id = OrderId(""), storeId = StoreId(""), registerId = com.enterprise.pos.core.RegisterId(""), employeeId = EmployeeId("")))
                             override suspend fun updateOrder(order: Order) = com.enterprise.pos.core.Result.success(order)
-                            override suspend fun setStatus(orderId: OrderId, status: OrderStatus) = com.enterprise.pos.core.Result.success(order)
-                            override suspend fun assignTable(orderId: OrderId, tableId: TableId?) = com.enterprise.pos.core.Result.success(com.enterprise.pos.domain.model.Order(id = OrderId(""), storeId = storeId, registerId = com.enterprise.pos.core.RegisterId(""), employeeId = EmployeeId("")))
+                            override suspend fun setStatus(orderId: OrderId, status: OrderStatus) = com.enterprise.pos.core.Result.success(com.enterprise.pos.domain.model.Order(id = orderId, storeId = StoreId(""), registerId = com.enterprise.pos.core.RegisterId(""), employeeId = EmployeeId("")))
+                            override suspend fun assignTable(orderId: OrderId, tableId: TableId?) = com.enterprise.pos.core.Result.success(com.enterprise.pos.domain.model.Order(id = OrderId(""), storeId = StoreId(""), registerId = com.enterprise.pos.core.RegisterId(""), employeeId = EmployeeId("")))
                             override suspend fun assignServer(tableId: TableId, serverId: EmployeeId?) = com.enterprise.pos.core.Result.success(Unit)
                             override suspend fun setTableStatus(tableId: TableId, status: TableStatus) = com.enterprise.pos.core.Result.success(Unit)
                             override suspend fun getById(orderId: OrderId) = com.enterprise.pos.core.Result.success<Order?>(null)
-                            override suspend fun closeOrder(orderId: OrderId) = com.enterprise.pos.core.Result.success(com.enterprise.pos.domain.model.Order(id = OrderId(""), storeId = storeId, registerId = com.enterprise.pos.core.RegisterId(""), employeeId = EmployeeId("")))
+                            override suspend fun closeOrder(orderId: OrderId) = com.enterprise.pos.core.Result.success(com.enterprise.pos.domain.model.Order(id = OrderId(""), storeId = StoreId(""), registerId = com.enterprise.pos.core.RegisterId(""), employeeId = EmployeeId("")))
                             override suspend fun recentOrders(storeId: StoreId, limit: Int) = com.enterprise.pos.core.Result.success(emptyList<Order>())
-                            override suspend fun markPaid(orderId: OrderId, payment: com.enterprise.pos.domain.model.Payment, employeeId: EmployeeId) = com.enterprise.pos.core.Result.success(com.enterprise.pos.domain.model.Order(id = OrderId(""), storeId = storeId, registerId = com.enterprise.pos.core.RegisterId(""), employeeId = EmployeeId("")))
-                            override suspend fun refund(orderId: OrderId, refund: com.enterprise.pos.domain.model.Payment, reason: String, employeeId: EmployeeId) = com.enterprise.pos.core.Result.success(com.enterprise.pos.domain.model.Order(id = OrderId(""), storeId = storeId, registerId = com.enterprise.pos.core.RegisterId(""), employeeId = EmployeeId("")))
-                            override suspend fun voidOrder(orderId: OrderId, reason: String, employeeId: EmployeeId) = com.enterprise.pos.core.Result.success(com.enterprise.pos.domain.model.Order(id = OrderId(""), storeId = storeId, registerId = com.enterprise.pos.core.RegisterId(""), employeeId = EmployeeId("")))
+                            override suspend fun markPaid(orderId: OrderId, payment: com.enterprise.pos.domain.model.Payment, employeeId: EmployeeId) = com.enterprise.pos.core.Result.success(com.enterprise.pos.domain.model.Order(id = OrderId(""), storeId = StoreId(""), registerId = com.enterprise.pos.core.RegisterId(""), employeeId = EmployeeId("")))
+                            override suspend fun refund(orderId: OrderId, refund: com.enterprise.pos.domain.model.Payment, reason: String, employeeId: EmployeeId) = com.enterprise.pos.core.Result.success(com.enterprise.pos.domain.model.Order(id = OrderId(""), storeId = StoreId(""), registerId = com.enterprise.pos.core.RegisterId(""), employeeId = EmployeeId("")))
+                            override suspend fun voidOrder(orderId: OrderId, reason: String, employeeId: EmployeeId) = com.enterprise.pos.core.Result.success(com.enterprise.pos.domain.model.Order(id = OrderId(""), storeId = StoreId(""), registerId = com.enterprise.pos.core.RegisterId(""), employeeId = EmployeeId("")))
                         },
                         reservationRepo = object : com.enterprise.pos.domain.repository.ReservationRepository {
-                            override fun observeReservations(storeId: StoreId, date: Long) = kotlinx.coroutines.flow.emptyFlow()
-                            override fun observeUpcoming(storeId: StoreId, hours: Int) = kotlinx.coroutines.flow.emptyFlow()
+                            override fun observeReservations(storeId: StoreId, date: Long) = kotlinx.coroutines.flow.emptyFlow<List<Reservation>>()
+                            override fun observeUpcoming(storeId: StoreId, hours: Int) = kotlinx.coroutines.flow.emptyFlow<List<Reservation>>()
                             override suspend fun get(id: com.enterprise.pos.core.Id<com.enterprise.pos.domain.model.ReservationTag>) = com.enterprise.pos.core.Result.success<Reservation?>(null)
                             override suspend fun upsert(r: Reservation) = com.enterprise.pos.core.Result.success(r)
                             override suspend fun setStatus(id: com.enterprise.pos.core.Id<com.enterprise.pos.domain.model.ReservationTag>, status: ReservationStatus) = com.enterprise.pos.core.Result.success(Unit)
@@ -457,7 +458,7 @@ private fun TableDetailScreenPreview() {
                             override suspend fun cancel(id: com.enterprise.pos.core.Id<com.enterprise.pos.domain.model.ReservationTag>, reason: String) = com.enterprise.pos.core.Result.success(Unit)
                             override suspend fun checkTableAvailability(storeId: StoreId, date: Long, partySize: Int) = com.enterprise.pos.core.Result.success(emptyList<RestaurantTable>())
                         }
-                    ) {}
+                    )
                 )
                 ReservationMiniCard(
                     Reservation(

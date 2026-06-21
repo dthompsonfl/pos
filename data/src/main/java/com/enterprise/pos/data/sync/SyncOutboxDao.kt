@@ -41,31 +41,4 @@ interface SyncOutboxDao {
 
     @Query("SELECT COUNT(*) FROM sync_outbox WHERE status = 'ACKNOWLEDGED' AND createdAt >= :since")
     suspend fun acknowledgedSinceCount(since: Long): Int
-
-    /** Convenience: create and upsert a sync outbox event in one call. */
-    @Transaction
-    suspend fun enqueue(
-        storeId: com.enterprise.pos.core.StoreId,
-        registerId: String? = null,
-        employeeId: String? = null,
-        entityType: String,
-        entityId: String,
-        operation: String = "UPSERT",
-        schemaVersion: Int = 1,
-        payloadJson: String = "{}",
-        createdAt: Long = System.currentTimeMillis()
-    ) {
-        val event = SyncOutboxEntity.create(
-            storeId = storeId,
-            registerId = registerId,
-            employeeId = employeeId,
-            entityType = entityType,
-            entityId = entityId,
-            operation = operation,
-            schemaVersion = schemaVersion,
-            payloadJson = payloadJson,
-            createdAt = createdAt
-        )
-        upsert(event)
-    }
 }

@@ -4,7 +4,11 @@ import com.enterprise.pos.core.AppError
 import com.enterprise.pos.core.Result
 import com.enterprise.pos.domain.model.Order
 import com.enterprise.pos.domain.model.Payment
+import com.enterprise.pos.hardware.escpos.EscPosCommands
+import com.enterprise.pos.hardware.escpos.EscPosPrinter
+import com.enterprise.pos.hardware.escpos.EscPosReceiptBuilder
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * Abstract interface for receipt printers supporting USB, Bluetooth, and network transports.

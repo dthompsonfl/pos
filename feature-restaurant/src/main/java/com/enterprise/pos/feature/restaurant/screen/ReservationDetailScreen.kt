@@ -90,8 +90,8 @@ fun ReservationDetailScreen(
                 item { GuestInfoCard(reservation) }
                 item { ReservationDetailsCard(reservation) }
                 item { ActionButtonsCard(reservation, viewModel) }
-                if (reservation.notes?.isNotBlank() == true) {
-                    item { NotesCard(reservation.notes) }
+                reservation.notes?.takeIf { it.isNotBlank() }?.let { notes ->
+                    item { NotesCard(notes) }
                 }
             }
         }

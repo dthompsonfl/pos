@@ -4,6 +4,7 @@ import com.enterprise.pos.core.AppError
 import com.enterprise.pos.core.Result
 import com.enterprise.pos.domain.model.Order
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * Abstract interface for customer-facing displays such as USB pole displays,

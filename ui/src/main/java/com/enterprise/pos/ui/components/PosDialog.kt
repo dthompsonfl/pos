@@ -169,7 +169,7 @@ fun <T> PosSelectionDialog(
                             }
                         } else null
                     )
-                    Divider()
+                    HorizontalDivider()
                 }
             }
         },

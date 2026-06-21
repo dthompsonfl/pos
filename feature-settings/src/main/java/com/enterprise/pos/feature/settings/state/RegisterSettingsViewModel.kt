@@ -78,18 +78,20 @@ class RegisterSettingsViewModel @Inject constructor(
                 register = current.copy(name = name, deviceIdentifier = deviceId, active = active)
             )
         } else {
-            val storeId = try {
-                storeRepo.current().getOrNull()?.id ?: StoreId("default")
-            } catch (_: Exception) { StoreId("default") }
-            _state.value = _state.value.copy(
-                register = Register(
-                    id = RegisterId(com.enterprise.pos.core.Id.random<Any>().value),
-                    storeId = storeId,
-                    name = name,
-                    deviceIdentifier = deviceId,
-                    active = active
+            viewModelScope.launch {
+                val storeId = try {
+                    storeRepo.current().getOrNull()?.id ?: StoreId("default")
+                } catch (_: Exception) { StoreId("default") }
+                _state.value = _state.value.copy(
+                    register = Register(
+                        id = RegisterId(com.enterprise.pos.core.Id.random<Any>().value),
+                        storeId = storeId,
+                        name = name,
+                        deviceIdentifier = deviceId,
+                        active = active
+                    )
                 )
-            )
+            }
         }
     }
 

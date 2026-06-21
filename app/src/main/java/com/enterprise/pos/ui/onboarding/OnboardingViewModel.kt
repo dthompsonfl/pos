@@ -163,7 +163,7 @@ class OnboardingViewModel @Inject constructor(
         updateProgress { copy(importedProducts = true) }
     }
 
-    fun updateProgress(block: OnboardingProgress. -> OnboardingProgress) {
+    fun updateProgress(block: OnboardingProgress.() -> OnboardingProgress) {
         _state.value = _state.value.copy(progress = block(_state.value.progress))
     }
 

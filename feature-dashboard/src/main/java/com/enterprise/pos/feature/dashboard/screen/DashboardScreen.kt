@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -104,7 +105,7 @@ fun DashboardScreen(
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     KpiTile("Transactions", snap.todayTransactions.toString(), Icons.Filled.Receipt, Modifier.weight(1f))
-                    KpiTile("Avg Order", snap.todayAverageOrder.format(), Icons.Filled.TrendingUp, Modifier.weight(1f))
+                    KpiTile("Avg Order", snap.todayAverageOrder.format(), Icons.AutoMirrored.Filled.TrendingUp, Modifier.weight(1f))
                     KpiTile("Tips", snap.todayTips.format(), Icons.Filled.TipsAndUpdates, Modifier.weight(1f))
                 }
             }
@@ -179,7 +180,7 @@ private fun HeroSalesCard(snap: DashboardSnapshot) {
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    if (todayVsY >= 0) Icons.Filled.TrendingUp else Icons.Filled.TrendingDown,
+                    if (todayVsY >= 0) Icons.AutoMirrored.Filled.TrendingUp else Icons.Filled.TrendingDown,
                     null, tint = trendColor
                 )
                 Spacer(Modifier.width(4.dp))

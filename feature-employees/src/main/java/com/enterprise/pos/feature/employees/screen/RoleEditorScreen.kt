@@ -72,6 +72,8 @@ fun RoleEditorScreen(
             Text("System Roles", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
 
             var roleExpanded by remember { mutableStateOf(false) }
+            val selectedCustomRole = state.selectedCustomRole
+            val selectedRole = state.selectedRole
             ExposedDropdownMenuBox(
                 expanded = roleExpanded,
                 onExpandedChange = { roleExpanded = it },
@@ -79,8 +81,8 @@ fun RoleEditorScreen(
             ) {
                 OutlinedTextField(
                     value = when {
-                        state.selectedCustomRole != null -> state.selectedCustomRole.name
-                        state.selectedRole != null -> state.selectedRole.name.replace('_', ' ').lowercase().replaceFirstChar { it.titlecase() }
+                        selectedCustomRole != null -> selectedCustomRole.name
+                        selectedRole != null -> selectedRole.name.replace('_', ' ').lowercase().replaceFirstChar { it.titlecase() }
                         else -> "Select role"
                     },
                     onValueChange = {},

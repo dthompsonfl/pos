@@ -3,6 +3,7 @@ package com.enterprise.pos.hardware.drawer
 import com.enterprise.pos.core.AppError
 import com.enterprise.pos.core.Result
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * Abstract interface for cash drawer controllers supporting USB relay, serial,

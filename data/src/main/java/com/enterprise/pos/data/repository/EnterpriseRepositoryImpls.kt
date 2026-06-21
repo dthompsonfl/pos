@@ -31,8 +31,10 @@ import com.enterprise.pos.data.db.dao.SyncQueueDao
 import com.enterprise.pos.data.db.dao.TableDao
 import com.enterprise.pos.data.db.dao.TipLogDao
 import com.enterprise.pos.data.db.dao.ZReportDao
+import com.enterprise.pos.data.sync.enqueue
 import com.enterprise.pos.data.db.entity.GiftCardTransactionEntity
 import com.enterprise.pos.data.db.entity.InventoryAdjustmentEntity
+import com.enterprise.pos.data.db.entity.InventoryEntity
 import com.enterprise.pos.data.db.entity.SettingEntity
 import com.enterprise.pos.data.db.entity.TipLogEntity
 import com.enterprise.pos.data.repository.EnterpriseMappers.toDomain
@@ -138,6 +140,11 @@ class ReservationRepositoryImpl(
 
     override suspend fun cancel(id: Id<com.enterprise.pos.domain.model.ReservationTag>, reason: String): Result<Unit> = Result.catching {
         dao.cancel(id.value, clock.now(), reason)
+    }
+
+    override suspend fun checkTableAvailability(storeId: StoreId, date: Long, partySize: Int): Result<List<com.enterprise.pos.domain.model.RestaurantTable>> = Result.catching {
+        val tables = tableDao.observeForStore(storeId.value).first()
+        tables.filter { it.capacity >= partySize && it.status == "AVAILABLE" }.map { it.toDomain() }
     }
 }
 
@@ -476,6 +483,72 @@ class InventoryManagementRepositoryImpl(
         // Real: SUM(onHand * costPrice) for all variants in store
         Money.ZERO
     }
+
+    override suspend fun getInventoryItem(variantId: com.enterprise.pos.core.VariantId, storeId: StoreId): Result<com.enterprise.pos.domain.model.InventoryItem?> = Result.catching {
+        val inv = catalogDao.getInventory(variantId.value, storeId.value) ?: return@catching null
+        val variant = catalogDao.variantsFor(inv.variantId).firstOrNull()
+        val product = variant?.let { catalogDao.getProduct(it.productId) }
+        com.enterprise.pos.domain.model.InventoryItem(
+            variantId = com.enterprise.pos.core.VariantId(inv.variantId),
+            storeId = StoreId(inv.storeId),
+            productName = product?.name ?: "",
+            sku = variant?.sku ?: "",
+            onHand = inv.onHand,
+            committed = inv.committed,
+            available = inv.onHand - inv.committed,
+            reorderPoint = inv.reorderPoint,
+            reorderQuantity = 20,
+            location = null,
+            supplierId = null,
+            supplierName = null,
+            unitCost = variant?.costPriceMinor?.let(Money::ofMinor),
+            lastCountedAt = null
+        )
+    }
+
+    override fun observeStockMovements(storeId: StoreId, variantId: com.enterprise.pos.core.VariantId): Flow<List<com.enterprise.pos.domain.model.StockMovement>> = flow {
+        emit(emptyList())
+    }
+
+    override suspend fun setReorderPoint(variantId: com.enterprise.pos.core.VariantId, storeId: StoreId, point: Int, qty: Int): Result<Unit> = Result.catching {
+        val current = catalogDao.getInventory(variantId.value, storeId.value)
+            ?: InventoryEntity(variantId.value, storeId.value, 0, 0, 5, 10, System.currentTimeMillis())
+        val updated = current.copy(reorderPoint = point, lowStockThreshold = point)
+        catalogDao.upsertInventory(updated)
+    }
+
+    // Supplier & Purchase Order stubs — no DB tables yet
+    override suspend fun getSupplier(id: Id<com.enterprise.pos.domain.model.SupplierTag>): Result<com.enterprise.pos.domain.model.Supplier?> =
+        Result.success(null)
+
+    override fun observeSuppliers(storeId: StoreId): Flow<List<com.enterprise.pos.domain.model.Supplier>> = flow {
+        emit(emptyList())
+    }
+
+    override suspend fun getSupplierPerformance(supplierId: Id<com.enterprise.pos.domain.model.SupplierTag>): Result<com.enterprise.pos.domain.model.SupplierPerformance> =
+        Result.success(com.enterprise.pos.domain.model.SupplierPerformance(supplierId))
+
+    override suspend fun observePurchaseOrders(storeId: StoreId, supplierId: Id<com.enterprise.pos.domain.model.SupplierTag>?): Flow<List<com.enterprise.pos.domain.model.PurchaseOrder>> = flow {
+        emit(emptyList())
+    }
+
+    override suspend fun getPurchaseOrder(id: Id<com.enterprise.pos.domain.model.PurchaseOrderTag>): Result<com.enterprise.pos.domain.model.PurchaseOrder?> =
+        Result.success(null)
+
+    override suspend fun upsertPurchaseOrder(po: com.enterprise.pos.domain.model.PurchaseOrder): Result<com.enterprise.pos.domain.model.PurchaseOrder> =
+        Result.failure(AppError.Generic("Purchase orders are not yet implemented in the local database"))
+
+    override suspend fun sendPurchaseOrder(id: Id<com.enterprise.pos.domain.model.PurchaseOrderTag>): Result<com.enterprise.pos.domain.model.PurchaseOrder> =
+        Result.failure(AppError.Generic("Purchase orders are not yet implemented in the local database"))
+
+    override suspend fun receivePurchaseOrder(id: Id<com.enterprise.pos.domain.model.PurchaseOrderTag>): Result<com.enterprise.pos.domain.model.PurchaseOrder> =
+        Result.failure(AppError.Generic("Purchase orders are not yet implemented in the local database"))
+
+    override suspend fun cancelPurchaseOrder(id: Id<com.enterprise.pos.domain.model.PurchaseOrderTag>): Result<com.enterprise.pos.domain.model.PurchaseOrder> =
+        Result.failure(AppError.Generic("Purchase orders are not yet implemented in the local database"))
+
+    override suspend fun deleteSupplier(id: Id<com.enterprise.pos.domain.model.SupplierTag>): Result<Unit> =
+        Result.failure(AppError.Generic("Supplier management is not yet implemented in the local database"))
 }
 
 class ReturnsRepositoryImpl(
@@ -801,5 +874,6 @@ class SettingRepositoryImpl(
     override suspend fun set(key: String, valueJson: String, updatedBy: String?): Result<Unit> = Result.catching {
         dao.upsert(SettingEntity(key = key, valueJson = valueJson, updatedAt = clock.now(), updatedBy = updatedBy))
     }
-    override fun observeAll() = dao.observeAll()
+    override fun observeAll(): Flow<List<com.enterprise.pos.domain.model.Setting>> =
+        dao.observeAll().map { it.map { e -> e.toDomain() } }
 }

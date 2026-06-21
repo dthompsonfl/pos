@@ -165,7 +165,7 @@ fun CustomerEditScreen(
                         label = { Text("ZIP") },
                         modifier = Modifier.weight(1f),
                         singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.PostalAddress, imeAction = ImeAction.Next)
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Next)
                     )
                     OutlinedTextField(
                         value = state.form.country,

@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalLayoutApi::class)
+
 package com.enterprise.pos.feature.restaurant.screen
 
 import androidx.compose.foundation.layout.*

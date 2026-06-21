@@ -94,7 +94,7 @@ fun PurchaseOrderScreen(
                     LineItemsSection(state, viewModel)
                 }
                 FormSection(title = "Totals") {
-                    TotalsSection(state)
+                    TotalsSection(state, viewModel)
                 }
                 FormSection(title = "Notes") {
                     PosTextField(
@@ -259,7 +259,7 @@ private fun LineItemCard(
 }
 
 @Composable
-private fun TotalsSection(state: PurchaseOrderUiState) {
+private fun TotalsSection(state: PurchaseOrderUiState, viewModel: PurchaseOrderViewModel) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         PosTextField(
             value = state.form.shippingCost,
@@ -273,11 +273,11 @@ private fun TotalsSection(state: PurchaseOrderUiState) {
             label = "Tax Percent (%)",
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
         )
-        Divider(modifier = Modifier.padding(vertical = 8.dp))
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
         TotalRow("Subtotal", state.subtotal.format())
         TotalRow("Shipping", state.shipping.format())
         TotalRow("Tax", state.tax.format())
-        Divider(modifier = Modifier.padding(vertical = 8.dp))
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
         TotalRow("Total", state.total.format(), isBold = true)
     }
 }

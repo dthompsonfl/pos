@@ -2,6 +2,8 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.hilt)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -28,6 +30,7 @@ android {
 
 dependencies {
     api(project(":payment-api"))
+    api(project(":core"))
     api(libs.stripe.terminal)
     api(libs.kotlinx.coroutines.android)
     api(libs.kotlinx.serialization.json)
@@ -35,6 +38,9 @@ dependencies {
     api(libs.ktor.client.okhttp)
     api(libs.ktor.client.content.negotiation)
     api(libs.ktor.serialization.json)
+
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
 
     testImplementation(libs.junit)
     testImplementation(libs.truth)

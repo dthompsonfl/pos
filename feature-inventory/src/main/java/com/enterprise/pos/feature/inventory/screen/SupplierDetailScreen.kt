@@ -18,6 +18,7 @@ import com.enterprise.pos.core.Id
 import com.enterprise.pos.core.Money
 import com.enterprise.pos.core.StoreId
 import com.enterprise.pos.domain.model.PurchaseOrder
+import com.enterprise.pos.domain.model.PurchaseOrderLine
 import com.enterprise.pos.domain.model.PurchaseOrderStatus
 import com.enterprise.pos.domain.model.Supplier
 import com.enterprise.pos.domain.model.SupplierPerformance

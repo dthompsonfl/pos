@@ -22,6 +22,7 @@ import com.enterprise.pos.data.db.dao.PaymentDao
 import com.enterprise.pos.data.db.dao.StoreDao
 import com.enterprise.pos.data.db.dao.SyncQueueDao
 import com.enterprise.pos.data.db.dao.TableDao
+import com.enterprise.pos.data.sync.enqueue
 import com.enterprise.pos.data.db.entity.SyncQueueEntity
 import com.enterprise.pos.data.repository.Mappers.rolePermissions
 import com.enterprise.pos.data.repository.Mappers.toDomain
@@ -465,13 +466,13 @@ class CustomerRepositoryImpl(
 
     override suspend fun upsert(customer: com.enterprise.pos.domain.model.Customer): Result<com.enterprise.pos.domain.model.Customer> = Result.catching {
         dao.upsert(customer.toEntity(clock.now()))
-        syncOutboxDao.enqueue(storeId = StoreId("global"), entityType = "customers", entityId = customer.id.value, operation = "UPSERT", createdAt = clock.now())
+        syncOutboxDao.enqueue(storeId = StoreId("global"), registerId = null, employeeId = null, schemaVersion = 1, payloadJson = "{}", entityType = "customers", entityId = customer.id.value, operation = "UPSERT", createdAt = clock.now())
         customer
     }
 
     override suspend fun delete(id: CustomerId): Result<Unit> = Result.catching {
         dao.delete(id.value)
-        syncOutboxDao.enqueue(storeId = StoreId("global"), entityType = "customers", entityId = id.value, operation = "DELETE", createdAt = clock.now())
+        syncOutboxDao.enqueue(storeId = StoreId("global"), registerId = null, employeeId = null, schemaVersion = 1, payloadJson = "{}", entityType = "customers", entityId = id.value, operation = "DELETE", createdAt = clock.now())
     }
 
     override suspend fun addLoyaltyPoints(id: CustomerId, points: Int): Result<com.enterprise.pos.domain.model.Customer> = Result.catching {

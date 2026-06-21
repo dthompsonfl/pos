@@ -10,6 +10,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -184,13 +187,14 @@ fun EmployeeDetailScreen(
                 }
             }
 
-            if (employee.notes?.isNotBlank() == true) {
+            val notes = employee.notes
+            if (notes != null && notes.isNotBlank()) {
                 item {
                     Card(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(16.dp)) {
                             Text("Notes", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                             Spacer(Modifier.height(4.dp))
-                            Text(employee.notes, style = MaterialTheme.typography.bodyMedium)
+                            Text(notes, style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                 }
@@ -228,7 +232,7 @@ fun EmployeeDetailScreen(
             title = { Text("Reset PIN") },
             text = {
                 Column {
-                    Text("Enter new 4-6 digit PIN for ${employee.name}")
+                    Text("Enter new 4-6 digit PIN for ${state.employee?.name ?: ""}")
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
                         value = newPin,
@@ -256,7 +260,7 @@ fun EmployeeDetailScreen(
         AlertDialog(
             onDismissRequest = { showDeactivateDialog = false },
             title = { Text("Deactivate Employee") },
-            text = { Text("This will deactivate ${employee.name}. They will no longer be able to log in. This action can be reversed by reactivating the employee.") },
+            text = { Text("This will deactivate ${state.employee?.name ?: ""}. They will no longer be able to log in. This action can be reversed by reactivating the employee.") },
             confirmButton = {
                 Button(
                     onClick = { viewModel.deactivate(employeeId); showDeactivateDialog = false },

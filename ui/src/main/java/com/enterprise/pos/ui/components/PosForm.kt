@@ -28,64 +28,6 @@ import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
 
-// ============================================================================
-// TextField — Standard text field with label, helper text, error state
-// ============================================================================
-@Composable
-private fun PosTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    modifier: Modifier = Modifier,
-    label: String = "",
-    placeholder: String = "",
-    helperText: String = "",
-    errorText: String = "",
-    leadingIcon: ImageVector? = null,
-    trailingIcon: ImageVector? = null,
-    onTrailingIconClick: (() -> Unit)? = null,
-    isError: Boolean = false,
-    readOnly: Boolean = false,
-    enabled: Boolean = true,
-    singleLine: Boolean = true,
-    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
-    keyboardActions: KeyboardActions = KeyboardActions.Default
-) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        modifier = modifier
-            .fillMaxWidth()
-            .semantics {
-                contentDescription = if (isError && errorText.isNotEmpty()) errorText else label
-            },
-        label = { if (label.isNotEmpty()) Text(label) },
-        placeholder = { if (placeholder.isNotEmpty()) Text(placeholder) },
-        leadingIcon = leadingIcon?.let {
-            { Icon(imageVector = it, contentDescription = null) }
-        },
-        trailingIcon = trailingIcon?.let {
-            {
-                IconButton(
-                    onClick = { onTrailingIconClick?.invoke() }
-                ) {
-                    Icon(imageVector = it, contentDescription = null)
-                }
-            }
-        },
-        isError = isError,
-        readOnly = readOnly,
-        enabled = enabled,
-        singleLine = singleLine,
-        keyboardOptions = keyboardOptions,
-        keyboardActions = keyboardActions,
-        supportingText = {
-            when {
-                isError && errorText.isNotEmpty() -> Text(errorText, color = MaterialTheme.colorScheme.error)
-                helperText.isNotEmpty() -> Text(helperText)
-            }
-        }
-    )
-}
 
 // ============================================================================
 // NumberField — Numeric input with increment/decrement buttons
@@ -458,7 +400,7 @@ fun FormSection(
                 color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Divider(
+            HorizontalDivider(
                 modifier = Modifier.weight(1f),
                 color = MaterialTheme.colorScheme.outlineVariant
             )

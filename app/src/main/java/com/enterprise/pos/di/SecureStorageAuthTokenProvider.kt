@@ -31,10 +31,8 @@ class SecureStorageAuthTokenProvider @Inject constructor(
         // This implementation does not have a configured refresh endpoint.
         // The caller should navigate to login when this returns failure.
         return Result.failure(
-            IllegalStateException(
-                "Token refresh not configured. " +
-                    "Wire SecureStorageAuthTokenProvider.refreshToken to your auth backend."
-            )
+            "Token refresh not configured. " +
+                "Wire SecureStorageAuthTokenProvider.refreshToken to your auth backend."
         )
     }
 
