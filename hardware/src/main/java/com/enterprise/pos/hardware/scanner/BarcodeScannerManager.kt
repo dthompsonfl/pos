@@ -177,7 +177,7 @@ class CameraBarcodeScannerManager : BarcodeScannerManager {
  */
 class SimulatedBarcodeScannerManager : BarcodeScannerManager {
 
-    private val _scans = MutableSharedFlow<BarcodeScan>(extraBufferCapacity = 16)
+    private val _scans = MutableSharedFlow<BarcodeScan>(replay = 1, extraBufferCapacity = 16)
     override val scans: Flow<BarcodeScan> = _scans.asSharedFlow()
 
     override suspend fun initialize(): Result<Unit> = Result.success(Unit)
