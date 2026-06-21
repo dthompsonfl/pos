@@ -6,12 +6,12 @@ import androidx.room.PrimaryKey
 import com.enterprise.pos.core.StoreId
 
 /**
- * Durable sync outbox — every state-changing DB transaction enqueues a [SyncOutboxEntity]
+ * Durable sync outbox - every state-changing DB transaction enqueues a [SyncOutboxEntity]
  * in the SAME Room transaction. A WorkManager job drains the outbox and POSTs each event
  * to the backend with idempotency keys; failures are retried with exponential backoff.
  *
  * Status transitions:
- *   PENDING → IN_FLIGHT → ACKNOWLEDGED (deleted) | FAILED (retryable) | CONFLICT (manual)
+ *   PENDING -> IN_FLIGHT -> ACKNOWLEDGED (deleted) | FAILED (retryable) | CONFLICT (manual)
  */
 @Entity(
     tableName = "sync_outbox",
@@ -37,8 +37,8 @@ data class SyncOutboxEntity(
     companion object {
         fun create(
             storeId: StoreId,
-            registerId: String?,
-            employeeId: String?,
+            registerId: String? = null,
+            employeeId: String? = null,
             entityType: String,
             entityId: String,
             operation: String = "UPSERT",
