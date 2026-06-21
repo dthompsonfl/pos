@@ -296,7 +296,7 @@ class EmployeeRepositoryImplTest {
 
     @Test
     fun `login verifies PIN and returns employee`() = runBlocking {
-        val hash = PinHasher.hash("1234")
+        val hash = PinHasher.hashPin("1234")
         coEvery { dao.allActive() } returns listOf(
             EmployeeEntity(
                 id = "emp-1", name = "Alice", pinHash = hash, role = "CASHIER", active = true,
@@ -314,7 +314,7 @@ class EmployeeRepositoryImplTest {
 
     @Test
     fun `login with wrong PIN fails`() = runBlocking {
-        val hash = PinHasher.hash("1234")
+        val hash = PinHasher.hashPin("1234")
         coEvery { dao.allActive() } returns listOf(
             EmployeeEntity(
                 id = "emp-1", name = "Alice", pinHash = hash, role = "CASHIER", active = true,
