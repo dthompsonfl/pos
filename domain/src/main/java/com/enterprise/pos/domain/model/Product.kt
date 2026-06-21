@@ -1,6 +1,7 @@
 package com.enterprise.pos.domain.model
 
 import com.enterprise.pos.core.CategoryId
+import com.enterprise.pos.core.ModifierGroupId
 import com.enterprise.pos.core.Money
 import com.enterprise.pos.core.ProductId
 import com.enterprise.pos.core.StoreId

@@ -19,7 +19,7 @@ data class Session(
     val permissions: List<String> = emptyList()
 ) {
     val isExpired: Boolean get() = System.currentTimeMillis() > expiresAt
-    val expiresAt: Long get() = lastActivityAt + sessionTimeoutMs(role)
+    val expiresAt: Long get() = lastActivityAt + SessionManager.sessionTimeoutMs(role)
     val remainingMs: Long get() = (expiresAt - System.currentTimeMillis()).coerceAtLeast(0L)
 }
 

@@ -302,3 +302,11 @@ enum class TableShape { ROUND, SQUARE, RECTANGLE, BOOTH }
 
 @Serializable
 enum class TableStatus { AVAILABLE, SEATED, ORDERED, DINING, BILL_REQUESTED, CLEANING, RESERVED }
+
+@Serializable
+data class Setting(
+    val key: String,
+    val valueJson: String,
+    val updatedAt: Long,
+    val updatedBy: String? = null
+)

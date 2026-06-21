@@ -48,6 +48,8 @@ dependencies {
     ksp(libs.hilt.work.compiler)
 
     api(libs.androidx.work.runtime.ktx)
+    api(libs.androidx.biometric)
+    api(libs.androidx.security.crypto)
     api(libs.kotlinx.coroutines.android)
     api(libs.kotlinx.serialization.json)
     api(libs.ktor.client.core)

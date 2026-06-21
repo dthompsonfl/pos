@@ -7,6 +7,7 @@ import com.enterprise.pos.core.IdTag
 import com.enterprise.pos.core.Money
 import com.enterprise.pos.core.OrderId
 import com.enterprise.pos.core.PaymentId
+import com.enterprise.pos.core.Percent
 import com.enterprise.pos.core.RegisterId
 import com.enterprise.pos.core.ShiftTag
 import com.enterprise.pos.core.StoreId

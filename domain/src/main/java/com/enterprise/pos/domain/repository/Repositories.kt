@@ -94,7 +94,7 @@ interface EmployeeRepository {
 interface SettingsRepository {
     suspend fun get(key: String): Result<String?>
     suspend fun set(key: String, valueJson: String, updatedBy: String?): Result<Unit>
-    fun observeAll(): Flow<List<com.enterprise.pos.data.db.entity.SettingEntity>>
+    fun observeAll(): Flow<List<com.enterprise.pos.domain.model.Setting>>
 }
 
 interface StoreRepository {

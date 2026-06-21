@@ -13,6 +13,7 @@ import com.enterprise.pos.domain.model.AuditLogEntry
 import com.enterprise.pos.domain.repository.AuditLogRepository
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.builtins.serializer
 import java.util.UUID
 
 /**
