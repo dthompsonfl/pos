@@ -45,7 +45,7 @@ data class TaxConfiguration(
                 TaxRule(
                     name = "Sales Tax",
                     rate = Percent.of(8.25),
-                    appliesTo = TaxCategory.values().toSet() - TaxCategory.EXEMPT - TaxCategory.ZERO_RATED
+                    appliesTo = TaxCategory.entries.toSet() - TaxCategory.EXEMPT - TaxCategory.ZERO_RATED
                 )
             )
         )

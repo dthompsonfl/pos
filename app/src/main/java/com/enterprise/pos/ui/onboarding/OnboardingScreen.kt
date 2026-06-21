@@ -22,7 +22,9 @@ import com.enterprise.pos.ui.theme.PosTheme
 @Composable
 fun OnboardingScreen(
     viewModel: OnboardingViewModel = hiltViewModel(),
-    onComplete: () -> Unit = {}
+    onComplete: () -> Unit = {},
+    onSkipProducts: () -> Unit = {},
+    onImportProducts: () -> Unit = {}
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
@@ -59,7 +61,16 @@ fun OnboardingScreen(
                     OnboardingStep.STORE -> StoreStep(state.progress, viewModel::updateProgress)
                     OnboardingStep.REGISTER -> RegisterStep(state.progress, viewModel::updateProgress)
                     OnboardingStep.EMPLOYEE -> EmployeeStep(state.progress, viewModel::updateProgress)
-                    OnboardingStep.PRODUCT -> ProductStep(viewModel::updateProgress)
+                    OnboardingStep.PRODUCT -> ProductStep(
+                        onSkipProducts = {
+                            viewModel.skipProducts()
+                            onSkipProducts()
+                        },
+                        onImportProducts = {
+                            viewModel.importProducts()
+                            onImportProducts()
+                        }
+                    )
                     OnboardingStep.PAYMENT -> PaymentStep(viewModel::updateProgress)
                     OnboardingStep.COMPLETE -> CompleteStep(state.progress)
                 }
@@ -172,13 +183,16 @@ private fun EmployeeStep(
 }
 
 @Composable
-private fun ProductStep(update: (OnboardingProgress. -> OnboardingProgress) -> Unit) {
+private fun ProductStep(
+    onSkipProducts: () -> Unit,
+    onImportProducts: () -> Unit
+) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Text("Product Setup", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Text("You can import products from a CSV file or create your first category and product later in the Catalog.", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
         Spacer(modifier = Modifier.height(16.dp))
-        SecondaryButton(text = "Import Products (CSV)", onClick = { /* file picker */ }, modifier = Modifier.fillMaxWidth())
-        TertiaryButton(text = "Create Later in Catalog", onClick = { }, modifier = Modifier.fillMaxWidth())
+        SecondaryButton(text = "Import Products (CSV)", onClick = onImportProducts, modifier = Modifier.fillMaxWidth())
+        TertiaryButton(text = "Create Later in Catalog", onClick = onSkipProducts, modifier = Modifier.fillMaxWidth())
     }
 }
 
@@ -186,7 +200,8 @@ private fun ProductStep(update: (OnboardingProgress. -> OnboardingProgress) -> U
 private fun PaymentStep(update: (OnboardingProgress. -> OnboardingProgress) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("Payment Setup", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-        Text("Configure payment providers in Settings after setup. For now, Cash and Manual Entry are always available.", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("Cash payments are always available.", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("Card-present payments require Stripe Terminal setup in Settings > Payment after onboarding.", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(modifier = Modifier.height(16.dp))
         InfoCard(type = InfoCardType.INFO, title = "Tip", message = "You can connect Stripe, Square, or Shopify in Settings > Payment after completing setup.", icon = Icons.Default.Info)
     }

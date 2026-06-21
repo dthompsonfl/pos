@@ -36,9 +36,49 @@ import com.enterprise.pos.feature.restaurant.screen.FloorScreen
 import com.enterprise.pos.feature.restaurant.screen.ReservationsScreen
 import com.enterprise.pos.feature.sales.screen.CartScreen
 import com.enterprise.pos.feature.sales.screen.CheckoutScreen
+import com.enterprise.pos.feature.settings.screen.AdvancedSettingsScreen
+import com.enterprise.pos.feature.settings.screen.BackupSettingsScreen
+import com.enterprise.pos.feature.settings.screen.HardwareSettingsScreen
+import com.enterprise.pos.feature.settings.screen.PaymentSettingsScreen
+import com.enterprise.pos.feature.settings.screen.ReceiptSettingsScreen
+import com.enterprise.pos.feature.settings.screen.RegisterSettingsScreen
 import com.enterprise.pos.feature.settings.screen.SettingsScreen
+import com.enterprise.pos.feature.settings.screen.StoreSettingsScreen
+import com.enterprise.pos.feature.settings.screen.TaxSettingsScreen
 import com.enterprise.pos.feature.shifts.screen.ShiftsScreen
 import com.enterprise.pos.ui.onboarding.OnboardingScreen
+
+import com.enterprise.pos.core.ProductId
+import com.enterprise.pos.core.CategoryId
+import com.enterprise.pos.core.ModifierGroupId
+import com.enterprise.pos.core.TableId
+import com.enterprise.pos.core.VariantId
+import com.enterprise.pos.core.Id
+import com.enterprise.pos.domain.model.PurchaseOrderTag
+import com.enterprise.pos.domain.model.SupplierTag
+import com.enterprise.pos.domain.model.ReservationTag
+import com.enterprise.pos.domain.model.Employee
+
+import com.enterprise.pos.feature.catalog.screen.ProductDetailScreen
+import com.enterprise.pos.feature.catalog.screen.CategoryDetailScreen
+import com.enterprise.pos.feature.catalog.screen.ModifierEditorScreen
+import com.enterprise.pos.feature.catalog.screen.ProductEditScreen
+
+import com.enterprise.pos.feature.customers.screen.CustomerAddScreen
+import com.enterprise.pos.feature.customers.screen.CustomerEditScreen
+
+import com.enterprise.pos.feature.employees.screen.LoginScreen
+import com.enterprise.pos.feature.employees.screen.EmployeeDetailScreen
+import com.enterprise.pos.feature.employees.screen.EmployeeEditScreen
+import com.enterprise.pos.feature.employees.screen.RoleEditorScreen
+
+import com.enterprise.pos.feature.inventory.screen.InventoryDetailScreen
+import com.enterprise.pos.feature.inventory.screen.StockAdjustmentScreen
+import com.enterprise.pos.feature.inventory.screen.PurchaseOrderScreen
+import com.enterprise.pos.feature.inventory.screen.SupplierDetailScreen
+
+import com.enterprise.pos.feature.restaurant.screen.ReservationDetailScreen
+import com.enterprise.pos.feature.restaurant.screen.TableDetailScreen
 
 /**
  * Defines the application navigation graph for the Enterprise POS shell.
@@ -174,8 +214,222 @@ private fun NavGraphBuilder.coreDestinations(
         )
     }
 
+    posDestination(Screen.SettingsStore) {
+        StoreSettingsScreen(onBack = { navController.popBackStackSafe() })
+    }
+    posDestination(Screen.SettingsRegister) {
+        RegisterSettingsScreen(onBack = { navController.popBackStackSafe() })
+    }
+    posDestination(Screen.SettingsPayment) {
+        PaymentSettingsScreen(onBack = { navController.popBackStackSafe() })
+    }
+    posDestination(Screen.SettingsTax) {
+        TaxSettingsScreen(onBack = { navController.popBackStackSafe() })
+    }
+    posDestination(Screen.SettingsReceipt) {
+        ReceiptSettingsScreen(onBack = { navController.popBackStackSafe() })
+    }
+    posDestination(Screen.SettingsHardware) {
+        HardwareSettingsScreen(onBack = { navController.popBackStackSafe() })
+    }
+    posDestination(Screen.SettingsBackup) {
+        BackupSettingsScreen(onBack = { navController.popBackStackSafe() })
+    }
+    posDestination(Screen.SettingsAdvanced) {
+        AdvancedSettingsScreen(onBack = { navController.popBackStackSafe() })
+    }
+
     posDestination(Screen.Onboarding) {
-        OnboardingScreen(onComplete = { navController.safeNavigate(Screen.Dashboard.route) })
+        OnboardingScreen(
+            onComplete = { navController.safeNavigate(Screen.Dashboard.route) },
+            onSkipProducts = { navController.safeNavigate(Screen.Catalog.route) },
+            onImportProducts = { navController.safeNavigate(Screen.Catalog.route) }
+        )
+    }
+
+    posDestination(Screen.ProductDetail) { entry ->
+        val id = ScreenArguments.idOrNull(entry)
+        if (id == null) {
+            onRouteError("Missing id for product detail")
+            MissingArgumentScreen(Screen.ProductDetail, "id")
+        } else {
+            ProductDetailScreen(
+                productId = ProductId(id),
+                onNavigateBack = { navController.popBackStackSafe() },
+                onEditProduct = { productId -> navController.safeNavigate(Screen.ProductEdit.build(productId.value)) }
+            )
+        }
+    }
+
+    posDestination(Screen.CategoryDetail) { entry ->
+        val id = ScreenArguments.idOrNull(entry)
+        if (id == null) {
+            onRouteError("Missing id for category detail")
+            MissingArgumentScreen(Screen.CategoryDetail, "id")
+        } else {
+            CategoryDetailScreen(
+                categoryId = CategoryId(id),
+                onNavigateBack = { navController.popBackStackSafe() },
+                onEditCategory = { },
+                onProductClick = { productId -> navController.safeNavigate(Screen.ProductDetail.build(productId.value)) }
+            )
+        }
+    }
+
+    posDestination(Screen.ModifierEditor) { entry ->
+        val id = ScreenArguments.idOrNull(entry)
+        ModifierEditorScreen(
+            modifierGroupId = id?.let { ModifierGroupId(it) },
+            onNavigateBack = { navController.popBackStackSafe() }
+        )
+    }
+
+    posDestination(Screen.ProductEdit) { entry ->
+        val id = ScreenArguments.idOrNull(entry)
+        ProductEditScreen(
+            productId = id?.let { ProductId(it) },
+            onNavigateBack = { navController.popBackStackSafe() }
+        )
+    }
+
+    posDestination(Screen.CustomerAdd) {
+        CustomerAddScreen(
+            onBack = { navController.popBackStackSafe() },
+            onSaved = { navController.popBackStackSafe() }
+        )
+    }
+
+    posDestination(Screen.CustomerEdit) { entry ->
+        val id = ScreenArguments.idOrNull(entry)
+        CustomerEditScreen(
+            customerId = id?.let { CustomerId(it) },
+            onBack = { navController.popBackStackSafe() },
+            onSaved = { navController.popBackStackSafe() }
+        )
+    }
+
+    posDestination(Screen.Login) {
+        LoginScreen(
+            onLoginSuccess = { navController.safeNavigate(Screen.Dashboard.route) }
+        )
+    }
+
+    posDestination(Screen.EmployeeDetail) { entry ->
+        val id = ScreenArguments.idOrNull(entry)
+        if (id == null) {
+            onRouteError("Missing id for employee detail")
+            MissingArgumentScreen(Screen.EmployeeDetail, "id")
+        } else {
+            EmployeeDetailScreen(
+                employeeId = EmployeeId(id),
+                isAdmin = false,
+                onBack = { navController.popBackStackSafe() },
+                onEdit = { navController.safeNavigate(Screen.EmployeeEdit.build(id)) },
+                onDeactivated = { navController.popBackStackSafe() }
+            )
+        }
+    }
+
+    posDestination(Screen.EmployeeEdit) { entry ->
+        val id = ScreenArguments.idOrNull(entry)
+        EmployeeEditScreen(
+            employeeId = id,
+            isAdmin = false,
+            onBack = { navController.popBackStackSafe() },
+            onSaved = { navController.popBackStackSafe() }
+        )
+    }
+
+    posDestination(Screen.RoleEditor) { entry ->
+        RoleEditorScreen(
+            onBack = { navController.popBackStackSafe() }
+        )
+    }
+
+    posDestination(Screen.InventoryDetail) { entry ->
+        val id = ScreenArguments.idOrNull(entry)
+        if (id == null) {
+            onRouteError("Missing id for inventory detail")
+            MissingArgumentScreen(Screen.InventoryDetail, "id")
+        } else {
+            InventoryDetailScreen(
+                variantId = VariantId(id),
+                storeId = storeId,
+                onNavigateToAdjustment = { variantId -> navController.safeNavigate(Screen.StockAdjustment.build(variantId.value)) },
+                onNavigateToPurchaseOrder = { },
+                onBack = { navController.popBackStackSafe() }
+            )
+        }
+    }
+
+    posDestination(Screen.StockAdjustment) { entry ->
+        val id = ScreenArguments.idOrNull(entry)
+        if (id == null) {
+            onRouteError("Missing id for stock adjustment")
+            MissingArgumentScreen(Screen.StockAdjustment, "id")
+        } else {
+            StockAdjustmentScreen(
+                variantId = VariantId(id),
+                storeId = storeId,
+                employeeId = employeeId,
+                onSaved = { navController.popBackStackSafe() },
+                onBack = { navController.popBackStackSafe() }
+            )
+        }
+    }
+
+    posDestination(Screen.PurchaseOrder) { entry ->
+        val id = ScreenArguments.idOrNull(entry)
+        PurchaseOrderScreen(
+            orderId = id?.let { Id<PurchaseOrderTag>(it) },
+            storeId = storeId,
+            onSaved = { navController.popBackStackSafe() },
+            onBack = { navController.popBackStackSafe() }
+        )
+    }
+
+    posDestination(Screen.SupplierDetail) { entry ->
+        val id = ScreenArguments.idOrNull(entry)
+        if (id == null) {
+            onRouteError("Missing id for supplier detail")
+            MissingArgumentScreen(Screen.SupplierDetail, "id")
+        } else {
+            SupplierDetailScreen(
+                supplierId = Id<SupplierTag>(id),
+                storeId = storeId,
+                onNavigateToPurchaseOrder = { },
+                onBack = { navController.popBackStackSafe() }
+            )
+        }
+    }
+
+    posDestination(Screen.ReservationDetail) { entry ->
+        val id = ScreenArguments.idOrNull(entry)
+        if (id == null) {
+            onRouteError("Missing id for reservation detail")
+            MissingArgumentScreen(Screen.ReservationDetail, "id")
+        } else {
+            ReservationDetailScreen(
+                reservationId = Id<ReservationTag>(id),
+                onNavigateToEdit = { },
+                onBack = { navController.popBackStackSafe() }
+            )
+        }
+    }
+
+    posDestination(Screen.TableDetail) { entry ->
+        val id = ScreenArguments.idOrNull(entry)
+        if (id == null) {
+            onRouteError("Missing id for table detail")
+            MissingArgumentScreen(Screen.TableDetail, "id")
+        } else {
+            TableDetailScreen(
+                tableId = TableId(id),
+                storeId = storeId,
+                onNavigateToOrder = { orderId -> navController.safeNavigate(Screen.Cart.build(orderId.value)) },
+                onBack = { navController.popBackStackSafe() }
+            )
+        }
     }
 }
 
@@ -196,7 +450,31 @@ private fun NavGraphBuilder.placeholderDestinations() {
         Screen.Migration,
         Screen.Reservations,
         Screen.Settings,
-        Screen.Onboarding
+        Screen.Onboarding,
+        Screen.SettingsStore,
+        Screen.SettingsRegister,
+        Screen.SettingsPayment,
+        Screen.SettingsTax,
+        Screen.SettingsReceipt,
+        Screen.SettingsHardware,
+        Screen.SettingsBackup,
+        Screen.SettingsAdvanced,
+        Screen.ProductDetail,
+        Screen.CategoryDetail,
+        Screen.ModifierEditor,
+        Screen.ProductEdit,
+        Screen.CustomerAdd,
+        Screen.CustomerEdit,
+        Screen.Login,
+        Screen.EmployeeDetail,
+        Screen.EmployeeEdit,
+        Screen.RoleEditor,
+        Screen.InventoryDetail,
+        Screen.StockAdjustment,
+        Screen.PurchaseOrder,
+        Screen.SupplierDetail,
+        Screen.ReservationDetail,
+        Screen.TableDetail
     )
 
     Screen.all

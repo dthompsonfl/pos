@@ -4,6 +4,7 @@ import com.enterprise.pos.core.Logger
 import com.enterprise.pos.core.NoopLogger
 import com.enterprise.pos.core.SystemClock
 import com.enterprise.pos.core.Clock
+import com.enterprise.pos.core.security.AuthTokenProvider
 import com.enterprise.pos.domain.service.CartEngine
 import com.enterprise.pos.domain.service.DefaultTaxEngine
 import com.enterprise.pos.domain.service.TaxConfiguration
@@ -35,15 +36,18 @@ import com.enterprise.pos.payment.model.PaymentProvider
 import com.enterprise.pos.payment.model.PaymentProviderId
 import com.enterprise.pos.payment.model.PaymentRouterConfig
 import com.enterprise.pos.payment.model.PaymentRoutingPolicy
+import com.enterprise.pos.payment.model.ProviderConfig
+import com.enterprise.pos.payment.model.ProviderEnvironment
 import com.enterprise.pos.payment.router.PaymentRouter
 import com.enterprise.pos.payment.shopify.ShopifyPaymentProvider
 import com.enterprise.pos.payment.square.SquarePaymentProvider
-import com.enterprise.pos.payment.stripe.StripePaymentProvider
+import com.enterprise.pos.payment.stripe.StripeTerminalPaymentProvider
 import com.enterprise.pos.BuildConfig
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import javax.inject.Named
 import javax.inject.Singleton
 import kotlin.jvm.JvmSuppressWildcards
 
@@ -52,18 +56,28 @@ import kotlin.jvm.JvmSuppressWildcards
 object AppModule {
 
     @Provides @Singleton
+    fun provideAuthTokenProvider(provider: SecureStorageAuthTokenProvider): AuthTokenProvider = provider
+
+    @Provides @Singleton
+    @Named("backend_base_url")
+    fun provideBackendBaseUrl(): String = com.enterprise.pos.BuildConfig.BACKEND_BASE_URL
+
+    @Provides @Singleton
+    @Named("enable_simulated_providers")
+    fun provideEnableSimulatedProviders(): Boolean = com.enterprise.pos.BuildConfig.ENABLE_SIMULATED_PROVIDERS
+
+    @Provides @Singleton
     fun provideTaxEngine(): TaxEngine = DefaultTaxEngine(TaxConfiguration.RESTAURANT)
 
     @Provides @Singleton
-    fun providePaymentProviders(): Map<PaymentProviderId, @JvmSuppressWildcards PaymentProvider> {
+    fun providePaymentProviders(
+        stripeTerminalProvider: StripeTerminalPaymentProvider
+    ): Map<PaymentProviderId, @JvmSuppressWildcards PaymentProvider> {
         val providers = mutableMapOf<PaymentProviderId, PaymentProvider>()
 
-        // Stripe: real backend-driven flow. Simulated mode only in debug builds.
-        providers[PaymentProviderId.STRIPE] = StripePaymentProvider(
-            backendBaseUrl = com.enterprise.pos.BuildConfig.BACKEND_BASE_URL,
-            authTokenProvider = { null },
-            simulate = com.enterprise.pos.BuildConfig.ENABLE_SIMULATED_PROVIDERS
-        )
+        // Stripe Terminal: canonical production provider. Injected via Hilt from StripeTerminalModule.
+        providers[PaymentProviderId.STRIPE] = stripeTerminalProvider
+
         // Square / Shopify adapters are simulated in this archive, so they are debug-only.
         if (com.enterprise.pos.BuildConfig.ENABLE_SIMULATED_PROVIDERS) {
             providers[PaymentProviderId.SQUARE] = SquarePaymentProvider()
@@ -97,7 +111,13 @@ object AppModule {
         return PaymentRouterConfig(
             enabledProviders = enabled,
             defaultProvider = PaymentProviderId.STRIPE,
-            fallbackProvider = PaymentProviderId.CASH
+            fallbackProvider = PaymentProviderId.CASH,
+            providerConfigs = mapOf(
+                PaymentProviderId.STRIPE to ProviderConfig(
+                    environment = if (com.enterprise.pos.BuildConfig.ENABLE_SIMULATED_PROVIDERS)
+                        ProviderEnvironment.SANDBOX else ProviderEnvironment.PRODUCTION
+                )
+            )
         )
     }
 
@@ -112,13 +132,17 @@ object AppModule {
     ): PaymentRouter = PaymentRouter(providers, policy, config)
 
     @Provides @Singleton
-    fun provideSyncBackend(logger: Logger): SyncBackend =
+    fun provideSyncBackend(
+        authTokenProvider: AuthTokenProvider,
+        @Named("backend_base_url") backendBaseUrl: String,
+        logger: Logger
+    ): SyncBackend =
         if (com.enterprise.pos.BuildConfig.ENABLE_SIMULATED_PROVIDERS) {
             NoopSyncBackend
         } else {
             HttpSyncBackend(
-                baseUrl = com.enterprise.pos.BuildConfig.BACKEND_BASE_URL,
-                authTokenProvider = { null },
+                baseUrl = backendBaseUrl,
+                authTokenProvider = authTokenProvider,
                 logger = logger
             )
         }

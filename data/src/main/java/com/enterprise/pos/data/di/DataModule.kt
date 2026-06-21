@@ -153,11 +153,12 @@ object DataModule {
         dao: OrderDao,
         tableDao: TableDao,
         paymentDao: com.enterprise.pos.data.db.dao.PaymentDao,
+        catalogDao: CatalogDao,
         syncOutboxDao: com.enterprise.pos.data.sync.SyncOutboxDao,
         auditLog: com.enterprise.pos.domain.repository.AuditLogRepository,
         cart: CartEngine,
         clock: Clock
-    ): OrderRepositoryImpl = OrderRepositoryImpl(dao, tableDao, paymentDao, syncOutboxDao, auditLog, cart, clock)
+    ): OrderRepositoryImpl = OrderRepositoryImpl(dao, tableDao, paymentDao, catalogDao, syncOutboxDao, auditLog, cart, clock)
 
     @Provides @Singleton
     fun provideCustomerImpl(dao: CustomerDao, syncOutboxDao: com.enterprise.pos.data.sync.SyncOutboxDao, clock: Clock): CustomerRepositoryImpl =

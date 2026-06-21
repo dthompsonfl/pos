@@ -12,9 +12,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.window.core.layout.WindowSizeClass
-import androidx.window.core.layout.WindowWidthSizeClass
-import androidx.window.layout.WindowMetrics
 import com.enterprise.pos.ui.theme.PosTheme
 
 // ============================================================================

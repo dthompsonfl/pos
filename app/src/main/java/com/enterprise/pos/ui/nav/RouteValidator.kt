@@ -1,6 +1,7 @@
 package com.enterprise.pos.ui.nav
 
-import android.util.Log
+import com.enterprise.pos.core.Logger
+import com.enterprise.pos.core.NoopLogger
 import androidx.navigation.NavController
 
 private const val TAG = "RouteValidator"
@@ -39,10 +40,11 @@ object RouteValidator {
      * Validates that a route is safe to navigate to. Logs a warning if invalid.
      */
     fun validateOrLog(route: String?): Boolean {
+        val logger = NoopLogger
         return if (isValid(route)) {
             true
         } else {
-            Log.w(TAG, "Attempted to navigate to invalid route: $route")
+            logger.w(TAG, "Attempted to navigate to invalid route")
             false
         }
     }
@@ -171,6 +173,7 @@ object RouteArgumentValidator {
  */
 object RouteInterceptor {
 
+    private val logger: Logger = NoopLogger
     interface NavigationInterceptor {
         fun intercept(route: String, currentRoute: String?): InterceptionResult
     }
@@ -198,11 +201,11 @@ object RouteInterceptor {
         for (interceptor in interceptors) {
             val result = interceptor.intercept(route, currentRoute)
             if (!result.allow) {
-                Log.i(TAG, "Navigation to '$route' blocked by interceptor")
+                logger.i(TAG, "Navigation blocked by interceptor")
                 return result
             }
             if (result.redirectTo != null) {
-                Log.i(TAG, "Navigation to '$route' redirected to '${result.redirectTo}'")
+                logger.i(TAG, "Navigation redirected by interceptor")
                 return result
             }
         }
@@ -214,7 +217,7 @@ object RouteInterceptor {
      */
     class AnalyticsInterceptor : NavigationInterceptor {
         override fun intercept(route: String, currentRoute: String?): InterceptionResult {
-            Log.d(TAG, "Navigating from '$currentRoute' to '$route'")
+            logger.d(TAG, "Navigation event")
             return InterceptionResult(allow = true, logEvent = "navigate:$route")
         }
     }
@@ -240,6 +243,7 @@ object RouteGuard {
         isAuthenticated: Boolean,
         userRole: String
     ): Boolean {
+        val logger = NoopLogger
         // Run through interceptors first
         val currentRoute = navController.currentDestination?.route
         val interception = RouteInterceptor.intercept(route, currentRoute)
@@ -254,7 +258,7 @@ object RouteGuard {
 
         // Validate route
         if (!RouteValidator.isValid(route)) {
-            Log.w(TAG, "Blocked invalid route: $route")
+            logger.w(TAG, "Blocked invalid route")
             return false
         }
 
@@ -263,7 +267,7 @@ object RouteGuard {
             if (!isAuthenticated) {
                 navController.navigateSingleTop(Screen.Login.route)
             } else {
-                Log.w(TAG, "Access denied to '$route' for role '$userRole'")
+                logger.w(TAG, "Access denied for route")
             }
             return false
         }

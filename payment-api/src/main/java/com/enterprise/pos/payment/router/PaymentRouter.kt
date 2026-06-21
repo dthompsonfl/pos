@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.update
 
 /**
  * The payment router is the single entry point used by the rest of the app.
@@ -89,7 +90,11 @@ class PaymentRouter(
 
     suspend fun connectReader(provider: PaymentProviderId, reader: com.enterprise.pos.payment.model.DiscoveredReader): Result<Unit> {
         val p = providers[provider] ?: return Result.failure(AppError.Generic("Unknown provider"))
-        return p.connectReader(reader)
+        return p.connectReader(reader).onSuccess {
+            _routerState.update { it.copy(connectedReaders = it.connectedReaders + (provider to true)) }
+        }.onFailure {
+            _routerState.update { it.copy(connectedReaders = it.connectedReaders + (provider to false)) }
+        }
     }
 
     suspend fun disconnectAll(): Result<Unit> {
@@ -202,6 +207,6 @@ data class PaymentRouterState(
 
 // Helper to fetch provider-specific config — extended by the DI layer.
 private fun PaymentRouterConfig.providerConfig(id: PaymentProviderId): com.enterprise.pos.payment.model.ProviderConfig =
-    com.enterprise.pos.payment.model.ProviderConfig(
+    providerConfigs[id] ?: com.enterprise.pos.payment.model.ProviderConfig(
         environment = com.enterprise.pos.payment.model.ProviderEnvironment.SANDBOX
     )

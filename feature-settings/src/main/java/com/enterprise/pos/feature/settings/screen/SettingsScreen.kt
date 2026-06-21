@@ -168,7 +168,7 @@ fun SettingsScreen(
             SettingsSection(
                 title = "Backup",
                 icon = Icons.Default.Backup,
-                summary = state.lastBackupAt?.let { "Last backup: ${java.text.SimpleDateFormat("MMM d, yyyy HH:mm").format(java.util.Date(it))}" } ?: "No backups yet",
+                summary = state.lastBackupAt?.let { "Last backup: ${java.text.SimpleDateFormat("MMM d, yyyy HH:mm", Locale.US).format(java.util.Date(it))}" } ?: "No backups yet",
                 visible = searchQuery.isBlank() || "backup".contains(searchQuery, ignoreCase = true)
             ) {
                 PrimaryButton(text = "Manage Backups", onClick = onNavigateToBackup, modifier = Modifier.fillMaxWidth())

@@ -12,6 +12,7 @@ data class PaymentRouterConfig(
     val fallbackProvider: PaymentProviderId? = null,
     val enableOfflineMode: Boolean = true,
     val maxOfflineAmount: Money = Money.of(500.0),
+    val providerConfigs: Map<PaymentProviderId, ProviderConfig> = emptyMap(),
     val tipSuggestions: List<TipSuggestion> = listOf(
         TipSuggestion.Percentage(15),
         TipSuggestion.Percentage(18),

@@ -434,4 +434,18 @@ object EnterpriseMappers {
         createdAt = createdAt,
         conflictsJson = if (conflicts.isEmpty()) "" else json.encodeToString(ListSerializer(MigrationConflict.serializer()), conflicts)
     )
+
+    fun SettingEntity.toDomain(): com.enterprise.pos.domain.model.Setting = com.enterprise.pos.domain.model.Setting(
+        key = key,
+        valueJson = valueJson,
+        updatedAt = updatedAt,
+        updatedBy = updatedBy
+    )
+
+    fun com.enterprise.pos.domain.model.Setting.toEntity(): SettingEntity = SettingEntity(
+        key = key,
+        valueJson = valueJson,
+        updatedAt = updatedAt,
+        updatedBy = updatedBy
+    )
 }

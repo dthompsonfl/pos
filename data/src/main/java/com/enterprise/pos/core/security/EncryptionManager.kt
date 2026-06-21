@@ -4,7 +4,8 @@ import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
-import android.util.Log
+import com.enterprise.pos.core.Logger
+import com.enterprise.pos.core.NoopLogger
 import java.security.KeyStore
 import java.security.MessageDigest
 import javax.crypto.Cipher
@@ -26,6 +27,7 @@ import javax.crypto.spec.GCMParameterSpec
  */
 class EncryptionManager(private val context: Context) {
 
+    private val logger: Logger = NoopLogger
     private val tag = "EncryptionManager"
     private val keyStore: KeyStore = KeyStore.getInstance(KEYSTORE_PROVIDER).apply { load(null) }
     private val keyRotationPref = context.getSharedPreferences(KEY_ROTATION_PREFS, Context.MODE_PRIVATE)
@@ -66,7 +68,7 @@ class EncryptionManager(private val context: Context) {
             val combined = iv + ciphertext
             return Base64.encodeToString(combined, Base64.NO_WRAP)
         } catch (e: Exception) {
-            Log.e(tag, "Encryption failed for alias $keyAlias", e)
+            logger.e(tag, "Encryption failed for alias $keyAlias", e)
             throw SecurityException("Encryption failed: ${e.message}", e)
         }
     }
@@ -90,7 +92,7 @@ class EncryptionManager(private val context: Context) {
             val plaintext = cipher.doFinal(encrypted)
             return String(plaintext, Charsets.UTF_8)
         } catch (e: Exception) {
-            Log.e(tag, "Decryption failed for alias $keyAlias", e)
+            logger.e(tag, "Decryption failed for alias $keyAlias", e)
             throw SecurityException("Decryption failed: ${e.message}", e)
         }
     }
@@ -107,7 +109,7 @@ class EncryptionManager(private val context: Context) {
         val newAlias = "$keyAlias$KEY_VERSION_SUFFIX$newVersion"
         generateKey(newAlias, requireHardware = false)
         keyRotationPref.edit().putInt(PREF_KEY_VERSION + keyAlias, newVersion).apply()
-        Log.i(tag, "Rotated key for alias $keyAlias to version $newVersion")
+        logger.i(tag, "Rotated key for alias $keyAlias to version $newVersion")
         return newVersion
     }
 
@@ -124,7 +126,7 @@ class EncryptionManager(private val context: Context) {
     fun deleteKey(keyAlias: String) {
         if (keyStore.containsAlias(keyAlias)) {
             keyStore.deleteEntry(keyAlias)
-            Log.i(tag, "Deleted key alias $keyAlias")
+            logger.i(tag, "Deleted key alias $keyAlias")
         }
     }
 
@@ -163,18 +165,18 @@ class EncryptionManager(private val context: Context) {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
                 if (context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_STRONGBOX_KEYSTORE)) {
                     builder.setIsStrongBoxBacked(true)
-                    Log.i(tag, "Using StrongBox (hardware HSM) for key $keyAlias")
+                    logger.i(tag, "Using StrongBox (hardware HSM) for key $keyAlias")
                 }
             }
 
             keyGen.init(builder.build())
             keyGen.generateKey()
-            Log.i(tag, "Generated AES-256 key for alias $keyAlias")
+            logger.i(tag, "Generated AES-256 key for alias $keyAlias")
         } catch (e: Exception) {
             if (requireHardware) {
                 throw SecurityException("Hardware-backed key generation failed and hardware is required", e)
             }
-            Log.w(tag, "Hardware-backed key generation failed for $keyAlias, falling back to TEE/software", e)
+            logger.w(tag, "Hardware-backed key generation failed for $keyAlias, falling back to TEE/software", e)
             // Fallback: generate without StrongBox
             val keyGen = KeyGenerator.getInstance(KEY_ALGORITHM, KEYSTORE_PROVIDER)
             val builder = KeyGenParameterSpec.Builder(
@@ -187,7 +189,7 @@ class EncryptionManager(private val context: Context) {
                 .setRandomizedEncryptionRequired(true)
             keyGen.init(builder.build())
             keyGen.generateKey()
-            Log.i(tag, "Generated fallback AES-256 key for alias $keyAlias")
+            logger.i(tag, "Generated fallback AES-256 key for alias $keyAlias")
         }
     }
 }

@@ -775,9 +775,8 @@ class MigrationRepositoryImpl(
         dao.complete(jobId.value, MigrationStatus.CANCELLED.name, clock.now())
     }
 
-    override suspend fun resolveConflict(jobId: Id<com.enterprise.pos.domain.model.MigrationJobTag>, conflict: MigrationConflict): Result<Unit> = Result.catching {
-        throw UnsupportedOperationException("Migration conflict resolution requires the backend migration worker")
-    }
+    override suspend fun resolveConflict(jobId: Id<com.enterprise.pos.domain.model.MigrationJobTag>, conflict: MigrationConflict): Result<Unit> =
+        Result.failure(AppError.Generic("Migration conflict resolution requires the backend migration worker. Use the backend /v1/migration/jobs endpoint."))
 
     override suspend fun importFromShopify(configJson: String, createdBy: EmployeeId): Result<MigrationJob> =
         createJob(MigrationSource.SHOPIFY, MigrationType.ALL, configJson, createdBy)

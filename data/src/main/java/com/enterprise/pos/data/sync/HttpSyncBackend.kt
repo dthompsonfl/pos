@@ -35,7 +35,7 @@ import kotlinx.serialization.json.Json
  */
 class HttpSyncBackend(
     private val baseUrl: String,
-    private val authTokenProvider: suspend () -> String?,
+    private val authTokenProvider: com.enterprise.pos.core.security.AuthTokenProvider,
     private val logger: Logger = NoopLogger
 ) : SyncBackend {
 
@@ -77,7 +77,7 @@ class HttpSyncBackend(
         return try {
             val response: HttpResponse = client.post("$baseUrl/v1/sync/events") {
                 contentType(ContentType.Application.Json)
-                authTokenProvider()?.takeIf { it.isNotBlank() }?.let { token ->
+                authTokenProvider.getToken()?.takeIf { it.isNotBlank() }?.let { token ->
                     header("Authorization", "Bearer $token")
                 }
                 header("Idempotency-Key", event.idempotencyKey)
@@ -123,7 +123,7 @@ class HttpSyncBackend(
         return try {
             val response: HttpResponse = client.post("$baseUrl/v1/sync/events/${event.id}/resolve") {
                 contentType(ContentType.Application.Json)
-                authTokenProvider()?.takeIf { it.isNotBlank() }?.let { token ->
+                authTokenProvider.getToken()?.takeIf { it.isNotBlank() }?.let { token ->
                     header("Authorization", "Bearer $token")
                 }
                 setBody(SyncResolveRequest(

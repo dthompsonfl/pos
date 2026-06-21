@@ -20,6 +20,7 @@ import com.enterprise.pos.feature.settings.state.ExportFormat
 import com.enterprise.pos.ui.components.*
 import com.enterprise.pos.ui.theme.PosTheme
 import java.text.SimpleDateFormat
+import java.util.Locale
 import java.util.Date
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -63,7 +64,7 @@ fun BackupSettingsScreen(
                         onCheckedChange = viewModel::toggleCloudBackup
                     )
                     state.lastBackupAt?.let {
-                        Text("Last backup: ${SimpleDateFormat("MMM d, yyyy HH:mm").format(Date(it))} (${state.lastBackupSize})", style = MaterialTheme.typography.bodySmall)
+                        Text("Last backup: ${SimpleDateFormat("MMM d, yyyy HH:mm", Locale.US).format(Date(it))} (${state.lastBackupSize})", style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }

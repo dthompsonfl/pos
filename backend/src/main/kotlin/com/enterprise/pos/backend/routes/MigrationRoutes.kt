@@ -166,8 +166,7 @@ fun Route.migrationRoutes() {
             }
 
             if (response.status != HttpStatusCode.OK) {
-                val body = response.body<String>()
-                logger.error("Shopify token exchange failed for {}: {} — {}", shop, response.status, body)
+                logger.error("Shopify token exchange failed for {}: {}", shop, response.status)
                 return@get call.respond(
                     HttpStatusCode.BadGateway,
                     "Shopify token exchange failed: ${response.status}"
@@ -248,8 +247,7 @@ fun Route.migrationRoutes() {
             }
 
             if (response.status != HttpStatusCode.OK) {
-                val body = response.body<String>()
-                logger.error("Square token exchange failed: {} — {}", response.status, body)
+                logger.error("Square token exchange failed: {}", response.status)
                 return@get call.respond(
                     HttpStatusCode.BadGateway,
                     "Square token exchange failed: ${response.status}"

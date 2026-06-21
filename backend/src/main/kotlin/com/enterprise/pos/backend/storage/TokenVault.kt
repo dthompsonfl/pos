@@ -1,3 +1,7 @@
+// PRODUCTION WARNING: This is an in-memory implementation for development.
+// Replace with a persistent database (PostgreSQL, DynamoDB, etc.) before production deployment.
+// Required: encrypted token storage, TTL for OAuth states, audit logging.
+
 package com.enterprise.pos.backend.storage
 
 import kotlinx.serialization.Serializable
@@ -41,14 +45,17 @@ class TokenVault {
     private val oauthStates = ConcurrentHashMap<String, String>() // state -> provider (shopify, square)
     private val logger = org.slf4j.LoggerFactory.getLogger(TokenVault::class.java)
 
+    // SECURITY WARNING: Never log accessToken or refreshToken values.
+    private fun redacted(token: String?): String = token?.take(4)?.plus("…REDACTED") ?: "null"
+
     private fun key(provider: String, merchantId: String): String = "$provider:$merchantId"
 
     /** Store a token in the vault. Overwrites any existing token for the same provider+merchant. */
     fun storeToken(token: ProviderToken) {
         tokens[key(token.provider, token.merchantId)] = token
         logger.info(
-            "Stored token for provider {} merchant {} (expiresAt: {})",
-            token.provider, token.merchantId, token.expiresAt ?: "never"
+            "Stored token for provider {} merchant {} (expiresAt: {}, accessToken: {})",
+            token.provider, token.merchantId, token.expiresAt ?: "never", redacted(token.accessToken)
         )
     }
 
@@ -91,6 +98,7 @@ class TokenVault {
 
     /** Purge expired states. In this in-memory implementation states never expire,
      * but in production they should have a TTL of 10 minutes. */
+    @Suppress("EmptyFunctionBlock") // In-memory OAuth state has no TTL
     fun purgeExpiredStates() {
         // No-op for in-memory; production should use Redis with TTL
     }

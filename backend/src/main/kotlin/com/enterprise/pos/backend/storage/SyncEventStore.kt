@@ -1,3 +1,7 @@
+// PRODUCTION WARNING: This is an in-memory implementation for development.
+// Replace with a persistent database (PostgreSQL, DynamoDB, etc.) before production deployment.
+// Required: encrypted token storage, TTL for OAuth states, audit logging.
+
 package com.enterprise.pos.backend.storage
 
 import kotlinx.serialization.Serializable

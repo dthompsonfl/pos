@@ -161,6 +161,7 @@ class OrderRepositoryImpl(
     private val orderDao: OrderDao,
     private val tableDao: TableDao,
     private val paymentDao: com.enterprise.pos.data.db.dao.PaymentDao,
+    private val catalogDao: CatalogDao,
     private val syncOutboxDao: com.enterprise.pos.data.sync.SyncOutboxDao,
     private val auditLog: com.enterprise.pos.domain.repository.AuditLogRepository,
     private val cartEngine: com.enterprise.pos.domain.service.CartEngine,
@@ -284,7 +285,7 @@ class OrderRepositoryImpl(
         for (line in updatedOrder.lines.filter { it.lineType == com.enterprise.pos.domain.model.OrderLineType.ITEM }) {
             val variantId = line.variantId ?: continue
             try {
-                dao.adjustInventory(variantId.value, current.storeId.value, -line.quantity.asInt)
+                catalogDao.adjustInventory(variantId.value, current.storeId.value, -line.quantity.asInt)
                 syncOutboxDao.enqueue(storeId = current.storeId, entityType = "inventory", entityId = "${variantId.value}|${current.storeId.value}", operation = "UPSERT", createdAt = now)
             } catch (t: Throwable) {
                 // Inventory decrement failure does NOT fail the payment — it's a separate concern.
@@ -369,7 +370,7 @@ class OrderRepositoryImpl(
         for (line in updatedOrder.lines.filter { it.lineType == com.enterprise.pos.domain.model.OrderLineType.ITEM }) {
             val variantId = line.variantId ?: continue
             try {
-                dao.adjustInventory(variantId.value, current.storeId.value, line.quantity.asInt)
+                catalogDao.adjustInventory(variantId.value, current.storeId.value, line.quantity.asInt)
                 syncOutboxDao.enqueue(storeId = current.storeId, entityType = "inventory", entityId = "${variantId.value}|${current.storeId.value}", operation = "UPSERT", createdAt = now)
             } catch (t: Throwable) {
                 auditLog.logAction(

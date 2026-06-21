@@ -116,7 +116,7 @@ class SimulatedHardwareManagersTest {
     @Test
     fun `SimulatedBarcodeScannerManager supports all formats`() = runBlocking {
         val manager = SimulatedBarcodeScannerManager()
-        com.enterprise.pos.hardware.scanner.BarcodeFormat.values().forEach { format ->
+        com.enterprise.pos.hardware.scanner.BarcodeFormat.entries.forEach { format ->
             assertThat(manager.isSupported(format)).isTrue()
         }
     }

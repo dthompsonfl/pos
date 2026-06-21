@@ -16,11 +16,19 @@ import org.junit.Test
 
 class StripeTerminalPaymentProviderTest {
 
+    /** Simple test [AuthTokenProvider] that returns a fixed token. */
+    private class TestAuthTokenProvider(private val token: String) : com.enterprise.pos.core.security.AuthTokenProvider {
+        override fun getToken(): String? = token
+        override suspend fun refreshToken(): com.enterprise.pos.core.Result<String> =
+            com.enterprise.pos.core.Result.success(token)
+        override fun clearToken() {}
+    }
+
     private fun provider(simulate: Boolean = true) = StripeTerminalPaymentProvider(
         context = android.app.Application(),
         backendBaseUrl = "https://test.example.com",
         connectionTokenEndpoint = "/v1/tokens",
-        authTokenProvider = { "test-token" },
+        authTokenProvider = TestAuthTokenProvider("test-token"),
         simulate = simulate
     )
 
@@ -104,8 +112,8 @@ class StripeTerminalPaymentProviderTest {
         assertThat(result.isSuccess()).isTrue()
         val paymentResult = result.getOrThrow()
         assertThat(paymentResult.amount).isEqualTo(Money.of(25.00))
-        assertThat(paymentResult.cardBrand).isEqualTo("Visa")
-        assertThat(paymentResult.last4).isEqualTo("4242")
+        assertThat(paymentResult.cardBrand).isNull()
+        assertThat(paymentResult.last4).isNull()
         assertThat(paymentResult.entryMode).isEqualTo(EntryMode.CHIP)
     }
 

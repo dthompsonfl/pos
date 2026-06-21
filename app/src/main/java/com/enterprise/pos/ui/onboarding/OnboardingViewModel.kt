@@ -17,6 +17,7 @@ import com.enterprise.pos.domain.model.EmployeeRole
 import com.enterprise.pos.domain.model.Register
 import com.enterprise.pos.domain.model.Store
 import com.enterprise.pos.domain.repository.EmployeeRepository
+import com.enterprise.pos.domain.repository.SettingsRepository
 import com.enterprise.pos.domain.repository.StoreRepository
 import com.enterprise.pos.domain.security.PinHasher
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -51,7 +52,9 @@ data class OnboardingProgress(
     val adminName: String = "",
     val adminEmail: String = "",
     val adminPin: String = "",
-    val termsAccepted: Boolean = false
+    val termsAccepted: Boolean = false,
+    val skippedProductSetup: Boolean = false,
+    val importedProducts: Boolean = false
 )
 
 data class OnboardingUiState(
@@ -69,7 +72,8 @@ data class OnboardingUiState(
 class OnboardingViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val storeRepo: StoreRepository,
-    private val employeeRepo: EmployeeRepository
+    private val employeeRepo: EmployeeRepository,
+    private val settingsRepo: SettingsRepository
 ) : ViewModel() {
 
     private val dataStore = context.onboardingDataStore
@@ -78,7 +82,17 @@ class OnboardingViewModel @Inject constructor(
     val state: StateFlow<OnboardingUiState> = _state.asStateFlow()
 
     init {
-        viewModelScope.launch { restoreProgress() }
+        viewModelScope.launch {
+            settingsRepo.get("onboarding_complete").onSuccess { complete ->
+                if (complete?.toBooleanStrictOrNull() == true) {
+                    _state.value = _state.value.copy(isComplete = true)
+                } else {
+                    restoreProgress()
+                }
+            }.onFailure {
+                restoreProgress()
+            }
+        }
     }
 
     private suspend fun restoreProgress() {
@@ -141,6 +155,14 @@ class OnboardingViewModel @Inject constructor(
         goToNext()
     }
 
+    fun skipProducts() {
+        updateProgress { copy(skippedProductSetup = true) }
+    }
+
+    fun importProducts() {
+        updateProgress { copy(importedProducts = true) }
+    }
+
     fun updateProgress(block: OnboardingProgress. -> OnboardingProgress) {
         _state.value = _state.value.copy(progress = block(_state.value.progress))
     }
@@ -201,6 +223,12 @@ class OnboardingViewModel @Inject constructor(
                 email = p.adminEmail.ifBlank { null }
             )
             employeeRepo.upsert(employee).onFailure { err ->
+                _state.value = _state.value.copy(isLoading = false, error = err.message)
+                return@launch
+            }
+
+            // Persist onboarding completion
+            settingsRepo.set("onboarding_complete", "true", null).onFailure { err ->
                 _state.value = _state.value.copy(isLoading = false, error = err.message)
                 return@launch
             }

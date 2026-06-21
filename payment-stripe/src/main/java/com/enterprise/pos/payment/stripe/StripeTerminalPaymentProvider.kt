@@ -89,7 +89,7 @@ class StripeTerminalPaymentProvider(
     @ApplicationContext private val context: Context,
     private val backendBaseUrl: String,
     private val connectionTokenEndpoint: String,
-    private val authTokenProvider: () -> String?,
+    private val authTokenProvider: com.enterprise.pos.core.security.AuthTokenProvider,
     private val logger: Logger = NoopLogger,
     private val simulate: Boolean = false
 ) : PaymentProvider {
@@ -471,8 +471,8 @@ class StripeTerminalPaymentProvider(
             providerTransactionId = handle.intentId,
             amount = handle.amount,
             currency = handle.currency,
-            cardBrand = "Visa",
-            last4 = "4242",
+            cardBrand = null,
+            last4 = null,
             entryMode = EntryMode.CHIP,
             receiptUrl = "https://dashboard.stripe.com/receipts/${handle.intentId}",
             capturedAt = System.currentTimeMillis(),
@@ -483,10 +483,10 @@ class StripeTerminalPaymentProvider(
     private suspend fun captureViaBackend(paymentIntentId: String) {
         httpClient.post("$backendBaseUrl/v1/payments/$paymentIntentId/capture") {
             contentType(ContentType.Application.Json)
-            authTokenProvider()?.takeIf { it.isNotBlank() }?.let { token ->
+            authTokenProvider.getToken()?.takeIf { it.isNotBlank() }?.let { token ->
                 header("Authorization", "Bearer $token")
             }
-            header("Idempotency-Key", UUID.randomUUID().toString())
+            header("Idempotency-Key", "capture-${paymentIntentId}")
             setBody(CaptureHttpRequest(tipAmountMinor = null))
         }
     }
@@ -700,7 +700,7 @@ class StripeTerminalPaymentProvider(
 private class StripeConnectionTokenProvider(
     private val backendBaseUrl: String,
     private val connectionTokenEndpoint: String,
-    private val authTokenProvider: () -> String?,
+    private val authTokenProvider: com.enterprise.pos.core.security.AuthTokenProvider,
     private val httpClient: HttpClient,
     private val scope: CoroutineScope,
     private val logger: Logger
@@ -726,10 +726,10 @@ private class StripeConnectionTokenProvider(
     private suspend fun fetchToken(): String {
         val response: ConnectionTokenHttpResponse = httpClient.post("$backendBaseUrl$connectionTokenEndpoint") {
             contentType(ContentType.Application.Json)
-            authTokenProvider()?.takeIf { it.isNotBlank() }?.let { token ->
+            authTokenProvider.getToken()?.takeIf { it.isNotBlank() }?.let { token ->
                 header("Authorization", "Bearer $token")
             }
-            header("Idempotency-Key", UUID.randomUUID().toString())
+            header("Idempotency-Key", "connection-token-${System.currentTimeMillis() / 3600000}")
             setBody(ConnectionTokenHttpRequest(locationId = ""))
         }.body()
         return response.secret

@@ -123,6 +123,7 @@ class HardwareSettingsViewModel @Inject constructor(
         _state.value = _state.value.copy(connectedDevices = connected, showManualAddDialog = false)
     }
 
+    @Suppress("EmptyFunctionBlock") // Hardware test dispatch stub
     fun testDevice(device: HardwareDevice) {
         // In production: dispatch test command to hardware manager
     }

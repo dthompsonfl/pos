@@ -1,6 +1,7 @@
 package com.enterprise.pos.data.security
 
-import android.util.Log
+import com.enterprise.pos.core.Logger
+import com.enterprise.pos.core.NoopLogger
 import com.enterprise.pos.core.AppError
 import com.enterprise.pos.core.EmployeeId
 import com.enterprise.pos.core.Money
@@ -29,6 +30,7 @@ class SecurityInterceptor(
     private val permissionChecker: PermissionChecker,
     private val auditLogger: AuditLogger
 ) {
+    private val logger: Logger = NoopLogger
     private val tag = "SecurityInterceptor"
 
     // Rate limiting buckets for sensitive operations
@@ -211,7 +213,7 @@ class SecurityInterceptor(
         operationName: String,
         operationId: String
     ) {
-        Log.w(tag, "Permission denied: ${employee.id.value} attempted ${action.name} ${resource.name} on $operationName/$operationId")
+        logger.w(tag, "Permission denied: ${action.name} ${resource.name} on $operationName")
         auditLogger.logSecurityEvent(
             event = "PERMISSION_DENIED",
             severity = Severity.WARNING,
@@ -232,7 +234,7 @@ class SecurityInterceptor(
         resource: PermissionChecker.Resource,
         operationName: String
     ) {
-        Log.w(tag, "Rate limit exceeded: ${employee.id.value} on ${resource.name} for $operationName")
+        logger.w(tag, "Rate limit exceeded: ${resource.name} for $operationName")
         auditLogger.logSecurityEvent(
             event = "RATE_LIMIT_EXCEEDED",
             severity = Severity.WARNING,
@@ -252,7 +254,7 @@ class SecurityInterceptor(
         resource: PermissionChecker.Resource,
         operationName: String
     ) {
-        Log.w(tag, "Outside business hours attempt: ${employee.id.value} on ${action.name} ${resource.name} for $operationName")
+        logger.w(tag, "Outside business hours attempt: ${action.name} ${resource.name} for $operationName")
         auditLogger.logSecurityEvent(
             event = "OUTSIDE_BUSINESS_HOURS",
             severity = Severity.WARNING,

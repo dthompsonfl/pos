@@ -51,6 +51,7 @@ class KeyboardWedgeScanner : BarcodeScanner {
         }
     }
 
+    @Suppress("EmptyFunctionBlock") // Intentional no-op for keyboard wedge scanner
     override suspend fun close() { /* nothing */ }
 }
 
@@ -64,6 +65,7 @@ class CameraScanner : BarcodeScanner {
         _scans.tryEmit(value)
     }
 
+    @Suppress("EmptyFunctionBlock") // Intentional no-op; camera lifecycle managed by UI
     override suspend fun close() {
         // Real: release camera, close ML Kit scanner.
     }

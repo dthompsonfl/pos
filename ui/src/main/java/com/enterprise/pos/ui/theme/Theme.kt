@@ -136,7 +136,7 @@ val LocalPosSpacing = staticCompositionLocalOf { PosSpacing }
 val LocalPosDimens = staticCompositionLocalOf { PosDimens }
 
 /** Provides access to POS-specific typography tokens (price, receipt, keyboard, etc.). */
-val LocalPosTypography = staticCompositionLocalOf { PosTypographyExtensions() }
+val LocalPosTypography = staticCompositionLocalOf { PosTypographyExtensions.DEFAULT }
 
 // =============================================================================
 // Window Size Classes (Material3 Adaptive)
@@ -190,15 +190,28 @@ fun isAppInDarkTheme(darkThemeOverride: Boolean? = null): Boolean =
 
 @Immutable
 data class PosTypographyExtensions(
-    val priceLarge: TextStyle = priceLarge,
-    val priceMedium: TextStyle = priceMedium,
-    val priceSmall: TextStyle = priceSmall,
-    val totalDisplay: TextStyle = totalDisplay,
-    val receiptMono: TextStyle = receiptMono,
-    val keyboardKey: TextStyle = keyboardKey,
-    val tabLabel: TextStyle = tabLabel,
-    val navLabel: TextStyle = navLabel
-)
+    val priceLarge: TextStyle,
+    val priceMedium: TextStyle,
+    val priceSmall: TextStyle,
+    val totalDisplay: TextStyle,
+    val receiptMono: TextStyle,
+    val keyboardKey: TextStyle,
+    val tabLabel: TextStyle,
+    val navLabel: TextStyle
+) {
+    companion object {
+        val DEFAULT = PosTypographyExtensions(
+            priceLarge = priceLarge,
+            priceMedium = priceMedium,
+            priceSmall = priceSmall,
+            totalDisplay = totalDisplay,
+            receiptMono = receiptMono,
+            keyboardKey = keyboardKey,
+            tabLabel = tabLabel,
+            navLabel = navLabel
+        )
+    }
+}
 
 /**
  * Enterprise POS Theme
@@ -253,7 +266,7 @@ fun PosTheme(
         LocalPosColors provides PosExtendedColors(),
         LocalPosSpacing provides PosSpacing,
         LocalPosDimens provides PosDimens,
-        LocalPosTypography provides PosTypographyExtensions()
+        LocalPosTypography provides PosTypographyExtensions.DEFAULT
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

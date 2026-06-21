@@ -1,6 +1,7 @@
 package com.enterprise.pos.data.security
 
-import android.util.Log
+import com.enterprise.pos.core.Logger
+import com.enterprise.pos.core.NoopLogger
 import com.enterprise.pos.core.EmployeeId
 import com.enterprise.pos.domain.model.Employee
 import com.enterprise.pos.domain.model.EmployeeRole
@@ -20,6 +21,7 @@ import kotlinx.coroutines.sync.withLock
 class SecurityRepositoryImpl(
     private val permissionChecker: PermissionChecker
 ) {
+    private val logger: Logger = NoopLogger
     private val tag = "SecurityRepositoryImpl"
 
     private val roleCache = mutableMapOf<EmployeeRole, RolePermissions>()
@@ -34,10 +36,10 @@ class SecurityRepositoryImpl(
      * Pre-populate the role permission cache with all known roles.
      */
     private fun warmRoleCache() {
-        for (role in EmployeeRole.values()) {
+        for (role in EmployeeRole.entries) {
             roleCache[role] = permissionChecker.rolePermissions(role)
         }
-        Log.i(tag, "Warmed role permission cache with ${roleCache.size} roles")
+        logger.i(tag, "Warmed role permission cache with ${roleCache.size} roles")
     }
 
     /**
@@ -56,7 +58,7 @@ class SecurityRepositoryImpl(
         cacheMutex.withLock {
             employeeOverrides[employeeId.value] = permissions
         }
-        Log.i(tag, "Updated custom permissions for employee ${employeeId.value}")
+        logger.i(tag, "Updated custom permissions for employee ${employeeId.value}")
     }
 
     /**
@@ -75,7 +77,7 @@ class SecurityRepositoryImpl(
         cacheMutex.withLock {
             employeeOverrides.remove(employeeId.value)
         }
-        Log.i(tag, "Cleared custom permissions for employee ${employeeId.value}")
+        logger.i(tag, "Cleared custom permissions for employee ${employeeId.value}")
     }
 
     /**
@@ -87,7 +89,7 @@ class SecurityRepositoryImpl(
             employeeOverrides.clear()
             warmRoleCache()
         }
-        Log.i(tag, "Invalidated all permission caches")
+        logger.i(tag, "Invalidated all permission caches")
     }
 
     /**

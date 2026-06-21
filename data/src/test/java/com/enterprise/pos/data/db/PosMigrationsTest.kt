@@ -26,7 +26,7 @@ class PosMigrationsTest {
         assertThat(migration.endVersion).isEqualTo(3)
         // Verify SQL contains expected statements
         val migrationClass = migration.javaClass
-        val migrateMethod = migrationClass.declaredMethods.first { it.name == "migrate" }
+        val migrateMethod: java.lang.reflect.Method = migrationClass.declaredMethods.first { it.name == "migrate" }
         assertThat(migrateMethod).isNotNull()
     }
 
@@ -35,7 +35,7 @@ class PosMigrationsTest {
         val migration = PosMigrations.MIGRATION_3_4
         assertThat(migration.startVersion).isEqualTo(3)
         assertThat(migration.endVersion).isEqualTo(4)
-        val migrateMethod = migration.javaClass.declaredMethods.first { it.name == "migrate" }
+        val migrateMethod: java.lang.reflect.Method = migration.javaClass.declaredMethods.first { it.name == "migrate" }
         assertThat(migrateMethod).isNotNull()
     }
 
@@ -44,7 +44,7 @@ class PosMigrationsTest {
         val migration = PosMigrations.MIGRATION_4_5
         assertThat(migration.startVersion).isEqualTo(4)
         assertThat(migration.endVersion).isEqualTo(5)
-        val migrateMethod = migration.javaClass.declaredMethods.first { it.name == "migrate" }
+        val migrateMethod: java.lang.reflect.Method = migration.javaClass.declaredMethods.first { it.name == "migrate" }
         assertThat(migrateMethod).isNotNull()
     }
 

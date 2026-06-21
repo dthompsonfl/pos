@@ -263,9 +263,9 @@ fun AdaptiveNavigationLayout(
 fun BottomNavigationBar(
     items: List<Screen>,
     currentRoute: String?,
+    modifier: Modifier = Modifier,
     badgeCounts: Map<String, Int> = emptyMap(),
-    onItemSelected: (Screen) -> Unit,
-    modifier: Modifier = Modifier
+    onItemSelected: (Screen) -> Unit
 ) {
     NavigationBar(
         modifier = modifier.fillMaxWidth(),
@@ -511,9 +511,9 @@ private fun NavigationDrawerContent(
 fun PosTopAppBar(
     title: String,
     onMenuClick: (() -> Unit)?,
+    modifier: Modifier = Modifier,
     actions: @Composable RowScope.() -> Unit = {},
-    scrollBehavior: androidx.compose.material3.TopAppBarScrollBehavior? = null,
-    modifier: Modifier = Modifier
+    scrollBehavior: androidx.compose.material3.TopAppBarScrollBehavior? = null
 ) {
     var isSearchActive by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }

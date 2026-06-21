@@ -1,7 +1,8 @@
 package com.enterprise.pos.core.security
 
 import android.content.Context
-import android.util.Log
+import com.enterprise.pos.core.Logger
+import com.enterprise.pos.core.NoopLogger
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
@@ -22,6 +23,7 @@ import java.util.concurrent.Executor
  */
 class BiometricAuth(context: Context) {
 
+    private val logger: Logger = NoopLogger
     private val tag = "BiometricAuth"
     private val biometricManager = BiometricManager.from(context)
     private val executor: Executor = ContextCompat.getMainExecutor(context)
@@ -32,7 +34,7 @@ class BiometricAuth(context: Context) {
     fun isAvailable(): Boolean {
         val result = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK)
         val available = result == BiometricManager.BIOMETRIC_SUCCESS
-        Log.d(tag, "Biometric availability: $available (result=$result)")
+        logger.d(tag, "Biometric availability: $available (result=$result)")
         return available
     }
 
@@ -60,7 +62,7 @@ class BiometricAuth(context: Context) {
         callback: BiometricCallback
     ) {
         if (!isAvailable()) {
-            Log.w(tag, "Biometric authentication not available")
+            logger.w(tag, "Biometric authentication not available")
             callback.onError(BiometricPrompt.ERROR_NO_BIOMETRICS, "Biometric authentication not available")
             return
         }
@@ -78,23 +80,23 @@ class BiometricAuth(context: Context) {
             executor,
             object : BiometricPrompt.AuthenticationCallback() {
                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                    Log.i(tag, "Biometric authentication succeeded")
+                    logger.i(tag, "Biometric authentication succeeded")
                     callback.onSuccess(result)
                 }
 
                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                    Log.w(tag, "Biometric authentication error: $errorCode - $errString")
+                    logger.w(tag, "Biometric authentication error: $errorCode - $errString")
                     callback.onError(errorCode, errString.toString())
                 }
 
                 override fun onAuthenticationFailed() {
-                    Log.w(tag, "Biometric authentication failed")
+                    logger.w(tag, "Biometric authentication failed")
                     callback.onFailure()
                 }
             }
         )
 
-        Log.d(tag, "Starting biometric prompt: title='$title'")
+        logger.d(tag, "Starting biometric prompt: title='$title'")
         biometricPrompt.authenticate(promptInfo)
     }
 
@@ -109,7 +111,7 @@ class BiometricAuth(context: Context) {
         callback: BiometricCallback
     ) {
         if (!isStrongAuthAvailable()) {
-            Log.w(tag, "Strong biometric authentication not available")
+            logger.w(tag, "Strong biometric authentication not available")
             callback.onError(BiometricPrompt.ERROR_NO_BIOMETRICS, "Strong biometric authentication not available")
             return
         }
@@ -127,23 +129,23 @@ class BiometricAuth(context: Context) {
             executor,
             object : BiometricPrompt.AuthenticationCallback() {
                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                    Log.i(tag, "Strong biometric authentication succeeded")
+                    logger.i(tag, "Strong biometric authentication succeeded")
                     callback.onSuccess(result)
                 }
 
                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                    Log.w(tag, "Strong biometric authentication error: $errorCode - $errString")
+                    logger.w(tag, "Strong biometric authentication error: $errorCode - $errString")
                     callback.onError(errorCode, errString.toString())
                 }
 
                 override fun onAuthenticationFailed() {
-                    Log.w(tag, "Strong biometric authentication failed")
+                    logger.w(tag, "Strong biometric authentication failed")
                     callback.onFailure()
                 }
             }
         )
 
-        Log.d(tag, "Starting strong biometric prompt: title='$title'")
+        logger.d(tag, "Starting strong biometric prompt: title='$title'")
         biometricPrompt.authenticate(promptInfo)
     }
 

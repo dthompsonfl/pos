@@ -9,7 +9,7 @@ plugins {
 
 android {
     namespace = "com.enterprise.pos.feature.inventory"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         minSdk = 26

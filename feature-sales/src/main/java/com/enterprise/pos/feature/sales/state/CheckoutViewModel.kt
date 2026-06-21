@@ -167,9 +167,9 @@ class CheckoutViewModel @Inject constructor(
         viewModelScope.launch {
             giftCards.redeem(code, amountToApply, orderId, employeeId)
                 .onSuccess { card ->
-                    // Record the gift-card tender as a completed split so it counts toward total paid.
+                    // Record the gift-card tender as a completed split with proper provider type.
                     val newCompleted = _state.value.completedTenders + TenderSplit(
-                        provider = PaymentProviderId.CASH.name, // gift card uses CASH bucket for reconciliation
+                        provider = "GIFT_CARD",
                         amount = amountToApply,
                         reference = "gift_card:$code"
                     )
@@ -331,7 +331,24 @@ class CheckoutViewModel @Inject constructor(
                     return
                 }
                 is Result.Success -> {
-                    completed.add(split.copy(paymentId = r.value.id, reference = r.value.providerTransactionId))
+                    val paymentResult = r.value
+                    // Persist each tender independently via markPaid.
+                    // markPaid accumulates payments and only marks the order PAID when amountDue reaches zero.
+                    orders.markPaid(orderId, paymentResult.toDomainPayment(orderId), employeeId)
+                        .onFailure { err ->
+                            logger.e(TAG, "Failed to persist split tender: ${err.message}")
+                            _state.value = _state.value.copy(isProcessing = false, error = err.message)
+                            _events.trySend(CheckoutUiEvent.Error(err.message))
+                            return
+                        }
+                    completed.add(
+                        TenderSplit(
+                            provider = split.provider,
+                            amount = split.amount,
+                            paymentId = paymentResult.id,
+                            reference = paymentResult.providerTransactionId
+                        )
+                    )
                     remaining -= split.amount
                     _state.value = _state.value.copy(completedTenders = completed.toList())
                 }
@@ -339,22 +356,17 @@ class CheckoutViewModel @Inject constructor(
         }
 
         if (remaining.isZero()) {
-            val lastResult = completed.lastOrNull()
-            if (lastResult != null) {
-                completeOrderWithPayment(
-                    orderId,
-                    employeeId,
-                    PaymentResult(
-                        id = PaymentId("split-${orderId.value}"),
-                        provider = PaymentProviderId.CASH, // synthetic aggregator
-                        providerTransactionId = "split",
-                        amount = _state.value.originalTotal,
-                        currency = "USD",
-                        capturedAt = System.currentTimeMillis(),
-                        metadata = mapOf("split_tenders" to completed.size.toString())
-                    )
-                )
-            }
+            // All tenders completed and persisted. Order is now fully paid.
+            _state.value = _state.value.copy(
+                isProcessing = false,
+                amountDue = Money.ZERO,
+                currentEvent = PaymentEvent.Success()
+            )
+            val firstTender = completed.firstOrNull()
+            val provider = firstTender?.let {
+                runCatching { PaymentProviderId.valueOf(it.provider) }.getOrNull()
+            } ?: PaymentProviderId.CASH
+            _events.trySend(CheckoutUiEvent.PaymentCompleted(provider, _state.value.originalTotal))
         } else {
             _state.value = _state.value.copy(
                 isProcessing = false,

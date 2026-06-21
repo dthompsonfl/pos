@@ -1,6 +1,7 @@
 package com.enterprise.pos.data.security
 
-import android.util.Log
+import com.enterprise.pos.core.Logger
+import com.enterprise.pos.core.NoopLogger
 import com.enterprise.pos.core.Clock
 import com.enterprise.pos.core.EmployeeId
 import com.enterprise.pos.core.RegisterId
@@ -37,6 +38,7 @@ class AuditLogRepositoryImpl(
     private val clock: Clock = SystemClock
 ) : AuditLogRepository {
 
+    private val logger: Logger = NoopLogger
     private val tag = "AuditLogRepositoryImpl"
     private val batchBuffer = mutableListOf<AuditLogEntity>()
     private val batchMutex = Any()
@@ -104,11 +106,11 @@ class AuditLogRepositoryImpl(
             try {
                 dao.insert(entity)
             } catch (e: Exception) {
-                Log.e(tag, "Failed to insert audit log entry: ${entity.id}", e)
+                logger.e(tag, "Failed to insert audit log entry", e)
                 throw e
             }
         }
-        Log.d(tag, "Flushed ${snapshot.size} audit log entries")
+        logger.d(tag, "Flushed ${snapshot.size} audit log entries")
     }
 
     /**
@@ -184,9 +186,8 @@ class AuditLogRepositoryImpl(
      */
     suspend fun applyRetentionPolicy(): Result<Int> = Result.catching {
         val cutoff = clock.now() - (retentionDays * 24 * 60 * 60 * 1000L)
-        Log.i(tag, "Applying retention policy: deleting logs older than $cutoff")
-        // Note: The AuditLogDao would need a deleteBefore method; this is a placeholder
-        // for when the DAO is extended with retention capabilities.
+        logger.i(tag, "Applying retention policy: deleting logs older than cutoff")
+        // AuditLogDao retention deletion is intentionally a no-op until DAO supports deleteBefore.
         0
     }
 

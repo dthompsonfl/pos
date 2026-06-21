@@ -20,12 +20,15 @@ class AuditLoggerTest {
         val entries = mutableListOf<AuditLogEntry>()
         override fun observe(storeId: StoreId, action: AuditAction?, limit: Int): Flow<List<AuditLogEntry>> = flowOf(entries)
         override fun observeForEntity(entityType: String, entityId: String): Flow<List<AuditLogEntry>> = flowOf(entries)
-        override suspend fun log(entry: AuditLogEntry) = run { entries.add(entry) }
+        override suspend fun log(entry: AuditLogEntry): com.enterprise.pos.core.Result<Unit> {
+            entries.add(entry)
+            return com.enterprise.pos.core.Result.success(Unit)
+        }
         override suspend fun logAction(
             storeId: StoreId, registerId: RegisterId?, employeeId: EmployeeId, employeeName: String,
             action: AuditAction, entityType: String, entityId: String,
             beforeJson: String?, afterJson: String?, reason: String?
-        ) = run {
+        ): com.enterprise.pos.core.Result<Unit> {
             entries.add(
                 AuditLogEntry(
                     id = com.enterprise.pos.core.Id.random(), storeId = storeId, registerId = registerId,
@@ -34,8 +37,10 @@ class AuditLoggerTest {
                     afterJson = afterJson, reason = reason, timestamp = System.currentTimeMillis()
                 )
             )
+            return com.enterprise.pos.core.Result.success(Unit)
         }
-        override suspend fun export(storeId: StoreId, from: Long, to: Long) = com.enterprise.pos.core.Result.success(entries)
+        override suspend fun export(storeId: StoreId, from: Long, to: Long): com.enterprise.pos.core.Result<List<AuditLogEntry>> =
+            com.enterprise.pos.core.Result.success(entries)
     }
 
     private val logger = AuditLogger(fakeRepo)

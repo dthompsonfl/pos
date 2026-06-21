@@ -24,3 +24,8 @@
 -keepclasseswithmembers class * {
     kotlinx.serialization.KSerializer serializer(...);
 }
+
+# Diagnostic output for debugging
+-printmapping build/outputs/mapping/release/mapping.txt
+-printseeds build/outputs/mapping/release/seeds.txt
+-printusage build/outputs/mapping/release/unused.txt

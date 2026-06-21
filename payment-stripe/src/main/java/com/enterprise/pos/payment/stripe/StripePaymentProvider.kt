@@ -47,11 +47,20 @@ import java.util.UUID
  *
  * Debug builds may use [simulate] for local checkout testing. Production builds must provide
  * a real [StripeTerminalSdkBridge]; otherwise every real card-present operation fails closed.
+ *
+ * Deprecated: Use [StripeTerminalPaymentProvider] for all production and simulated flows.
+ * This class is retained only for backward compatibility and will be removed in a future release.
  */
+@Deprecated(
+    message = "Use StripeTerminalPaymentProvider for all production and simulated flows. " +
+        "This class is retained for backward compatibility only and will be removed.",
+    replaceWith = ReplaceWith("StripeTerminalPaymentProvider"),
+    level = DeprecationLevel.WARNING
+)
 class StripePaymentProvider(
     private val logger: Logger = NoopLogger,
     private val backendBaseUrl: String,
-    private val authTokenProvider: () -> String?,
+    private val authTokenProvider: com.enterprise.pos.core.security.AuthTokenProvider,
     private val simulate: Boolean = false,
     private val sdkBridge: StripeTerminalSdkBridge? = null
 ) : PaymentProvider {
@@ -228,8 +237,8 @@ class StripePaymentProvider(
                 providerTransactionId = handle.intentId,
                 amount = handle.amount,
                 currency = handle.currency,
-                cardBrand = "Visa",
-                last4 = "4242",
+                cardBrand = null,
+                last4 = null,
                 entryMode = EntryMode.CHIP,
                 receiptUrl = "https://dashboard.stripe.com/receipts/${handle.intentId}",
                 capturedAt = System.currentTimeMillis(),
@@ -331,7 +340,7 @@ class StripePaymentProvider(
     }
 
     private fun io.ktor.client.request.HttpRequestBuilder.addAuthorizationHeader() {
-        authTokenProvider()?.takeIf { it.isNotBlank() }?.let { token ->
+        authTokenProvider.getToken()?.takeIf { it.isNotBlank() }?.let { token ->
             header("Authorization", "Bearer $token")
         }
     }

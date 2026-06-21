@@ -68,6 +68,10 @@ sealed class Screen(
         fun build(id: String): String = "modifier/$id"
     }
 
+    data object ProductEdit : Screen("product/edit/{id}", "Edit Product", Icons.Filled.Edit) {
+        fun build(id: String): String = "product/edit/$id"
+    }
+
     // ==================== SALES SCREENS (feature-sales) ====================
 
     data object OrderDetail : Screen("order/{id}", "Order", Icons.Filled.Receipt) {
@@ -202,14 +206,10 @@ sealed class Screen(
                 Dashboard, Floor, Catalog, Kds, Cart, Checkout, Customers, CustomerDetail,
                 Employees, Reports, Inventory, Shifts, Settings, Migration, Reservations,
                 Diagnostics, Onboarding, Login, ProductDetail, CategoryDetail, ModifierEditor,
-                OrderDetail, OrderHistory, RefundScreen, ShiftDetail, ShiftOpen, ShiftClose,
-                InventoryDetail, StockAdjustment, PurchaseOrder, SupplierDetail, CustomerEdit,
-                CustomerAdd, ReservationDetail, TableDetail, EmployeeDetail, EmployeeEdit,
-                RoleEditor, ReportDetail, ReportExport, GiftCardDetail, GiftCardAdd,
-                PromotionDetail, PromotionAdd, ReturnDetail, ReturnCreate, SettingsStore,
-                SettingsRegister, SettingsPayment, SettingsTax, SettingsReceipt, SettingsHardware,
-                SettingsBackup, SettingsAdvanced, OnboardingStore, OnboardingRegister,
-                OnboardingEmployee, OnboardingProduct, OnboardingPayment, OnboardingComplete
+                ProductEdit, InventoryDetail, StockAdjustment, PurchaseOrder, SupplierDetail,
+                CustomerEdit, CustomerAdd, ReservationDetail, TableDetail, EmployeeDetail,
+                EmployeeEdit, RoleEditor, SettingsStore, SettingsRegister, SettingsPayment,
+                SettingsTax, SettingsReceipt, SettingsHardware, SettingsBackup, SettingsAdvanced
             )
         }
 
@@ -265,9 +265,8 @@ sealed class ScreenGroup(val label: String, val screens: List<Screen>) {
     data object Operations : ScreenGroup(
         "Operations",
         listOf(
-            Screen.Reservations, Screen.OrderHistory, Screen.Customers, Screen.CustomerDetail,
-            Screen.CustomerAdd, Screen.CustomerEdit, Screen.ReturnDetail, Screen.ReturnCreate,
-            Screen.RefundScreen
+            Screen.Reservations, Screen.Customers, Screen.CustomerDetail,
+            Screen.CustomerAdd, Screen.CustomerEdit
         )
     )
 
@@ -283,9 +282,7 @@ sealed class ScreenGroup(val label: String, val screens: List<Screen>) {
         "Administration",
         listOf(
             Screen.Employees, Screen.EmployeeDetail, Screen.EmployeeEdit, Screen.RoleEditor,
-            Screen.Reports, Screen.ReportDetail, Screen.ReportExport, Screen.Shifts,
-            Screen.ShiftDetail, Screen.ShiftOpen, Screen.ShiftClose, Screen.GiftCardDetail,
-            Screen.GiftCardAdd, Screen.PromotionDetail, Screen.PromotionAdd
+            Screen.Reports, Screen.Shifts
         )
     )
 
@@ -294,16 +291,14 @@ sealed class ScreenGroup(val label: String, val screens: List<Screen>) {
         listOf(
             Screen.Settings, Screen.SettingsStore, Screen.SettingsRegister, Screen.SettingsPayment,
             Screen.SettingsTax, Screen.SettingsReceipt, Screen.SettingsHardware, Screen.SettingsBackup,
-            Screen.SettingsAdvanced, Screen.Onboarding, Screen.OnboardingStore, Screen.OnboardingRegister,
-            Screen.OnboardingEmployee, Screen.OnboardingProduct, Screen.OnboardingPayment,
-            Screen.OnboardingComplete, Screen.Migration, Screen.Diagnostics
+            Screen.SettingsAdvanced, Screen.Onboarding, Screen.Migration, Screen.Diagnostics
         )
     )
 
     data object Catalog : ScreenGroup(
         "Catalog",
         listOf(
-            Screen.ProductDetail, Screen.CategoryDetail, Screen.ModifierEditor
+            Screen.ProductDetail, Screen.CategoryDetail, Screen.ModifierEditor, Screen.ProductEdit
         )
     )
 

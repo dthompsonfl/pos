@@ -8,7 +8,7 @@ plugins {
 
 android {
     namespace = "com.enterprise.pos.hardware"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         minSdk = 26

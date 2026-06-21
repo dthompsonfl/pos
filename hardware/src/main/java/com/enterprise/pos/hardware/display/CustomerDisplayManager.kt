@@ -43,9 +43,9 @@ class UsbPoleDisplayManager(
     override val status: StateFlow<DisplayStatus> = _status.asStateFlow()
 
     // USB HID command set for common pole displays
-    private val CLEAR_DISPLAY = byteArrayOf(0x0C.toByte())
-    private val CURSOR_HOME = byteArrayOf(0x1B.toByte(), 0x5B.toByte(), 0x31.toByte(), 0x3B.toByte(), 0x31.toByte(), 0x48.toByte())
-    private val LINE_2 = byteArrayOf(0x1B.toByte(), 0x5B.toByte(), 0x32.toByte(), 0x3B.toByte(), 0x31.toByte(), 0x48.toByte())
+    private val clearDisplay = byteArrayOf(0x0C.toByte())
+    private val cursorHome = byteArrayOf(0x1B.toByte(), 0x5B.toByte(), 0x31.toByte(), 0x3B.toByte(), 0x31.toByte(), 0x48.toByte())
+    private val line2 = byteArrayOf(0x1B.toByte(), 0x5B.toByte(), 0x32.toByte(), 0x3B.toByte(), 0x31.toByte(), 0x48.toByte())
 
     override suspend fun showWelcome(): Result<Unit> = Result.catching {
         logger.i(TAG, "Showing welcome message")

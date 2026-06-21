@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.enterprise.pos.payment.shopify"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         minSdk = 26

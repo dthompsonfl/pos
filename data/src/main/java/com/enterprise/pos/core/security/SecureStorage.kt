@@ -2,7 +2,8 @@ package com.enterprise.pos.core.security
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.util.Log
+import com.enterprise.pos.core.Logger
+import com.enterprise.pos.core.NoopLogger
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 
@@ -20,6 +21,7 @@ import androidx.security.crypto.MasterKey
  */
 class SecureStorage(context: Context) {
 
+    private val logger: Logger = NoopLogger
     private val tag = "SecureStorage"
     private val prefs: SharedPreferences
 
@@ -35,7 +37,7 @@ class SecureStorage(context: Context) {
             EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
             EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
         )
-        Log.i(tag, "SecureStorage initialized with AES-256-GCM encrypted preferences")
+        logger.i(tag, "SecureStorage initialized with AES-256-GCM encrypted preferences")
     }
 
     /**
@@ -45,7 +47,7 @@ class SecureStorage(context: Context) {
      */
     fun write(key: String, value: String) {
         prefs.edit().putString(key, value).apply()
-        Log.d(tag, "Wrote encrypted value for key: $key")
+        logger.d(tag, "Wrote encrypted value for key: $key")
     }
 
     /**
@@ -54,7 +56,7 @@ class SecureStorage(context: Context) {
      */
     fun read(key: String): String? {
         val value = prefs.getString(key, null)
-        Log.d(tag, "Read encrypted value for key: $key (exists=${value != null})")
+        logger.d(tag, "Read encrypted value for key: $key (exists=${value != null})")
         return value
     }
 
@@ -63,7 +65,7 @@ class SecureStorage(context: Context) {
      */
     fun delete(key: String) {
         prefs.edit().remove(key).apply()
-        Log.d(tag, "Deleted key: $key")
+        logger.d(tag, "Deleted key: $key")
     }
 
     /**
@@ -71,7 +73,7 @@ class SecureStorage(context: Context) {
      */
     fun clear() {
         prefs.edit().clear().apply()
-        Log.w(tag, "Cleared all secure storage entries")
+        logger.w(tag, "Cleared all secure storage entries")
     }
 
     /**

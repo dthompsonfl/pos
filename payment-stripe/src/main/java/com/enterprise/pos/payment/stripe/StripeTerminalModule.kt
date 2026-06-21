@@ -8,6 +8,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import javax.inject.Named
 import javax.inject.Singleton
 
 /**
@@ -16,30 +17,32 @@ import javax.inject.Singleton
  * Provides [StripeTerminalPaymentProvider] as a singleton and binds it to the
  * [PaymentProvider] interface so the payment router can inject it.
  *
- * Configuration values (backend URL, token endpoint) are hardcoded here for the
- * enterprise deployment. Override by providing a custom module with higher precedence
- * or by setting build-config fields in the app module.
+ * Configuration values (backend URL, token endpoint) are injected from [AppModule]
+ * via [Named] qualifiers so the `payment-stripe` library module does not need
+ * direct access to the app-level [BuildConfig].
  */
 @Module
 @InstallIn(SingletonComponent::class)
 object StripeTerminalModule {
 
-    private const val DEFAULT_BACKEND_BASE_URL = "https://api.enterprise-pos.example.com"
     private const val DEFAULT_CONNECTION_TOKEN_ENDPOINT = "/v1/terminal/connection-token"
 
     @Provides
     @Singleton
     fun provideStripeTerminalPaymentProvider(
         @ApplicationContext context: Context,
+        @Named("backend_base_url") backendBaseUrl: String,
+        @Named("enable_simulated_providers") simulate: Boolean,
+        authTokenProvider: com.enterprise.pos.core.security.AuthTokenProvider,
         logger: Logger
     ): StripeTerminalPaymentProvider {
         return StripeTerminalPaymentProvider(
             context = context,
-            backendBaseUrl = DEFAULT_BACKEND_BASE_URL,
+            backendBaseUrl = backendBaseUrl,
             connectionTokenEndpoint = DEFAULT_CONNECTION_TOKEN_ENDPOINT,
-            authTokenProvider = { null },
+            authTokenProvider = authTokenProvider,
             logger = logger,
-            simulate = false
+            simulate = simulate
         )
     }
 

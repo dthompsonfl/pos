@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.enterprise.pos.core.RegisterId
 import com.enterprise.pos.core.StoreId
 import com.enterprise.pos.domain.model.Register
+import com.enterprise.pos.domain.repository.SettingsRepository
 import com.enterprise.pos.domain.repository.StoreRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,7 +28,8 @@ data class RegisterSettingsUiState(
 
 @HiltViewModel
 class RegisterSettingsViewModel @Inject constructor(
-    private val storeRepo: StoreRepository
+    private val storeRepo: StoreRepository,
+    private val settingsRepo: SettingsRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(RegisterSettingsUiState())
@@ -44,9 +46,23 @@ class RegisterSettingsViewModel @Inject constructor(
                 storeRepo.registers(store.id).onSuccess { registers ->
                     val reg = registers.firstOrNull { it.active } ?: registers.firstOrNull()
                     _state.value = _state.value.copy(register = reg, isLoading = false)
+                }.onFailure {
+                    _state.value = _state.value.copy(isLoading = false)
                 }
             }.onFailure {
                 _state.value = _state.value.copy(isLoading = false)
+            }
+            settingsRepo.get("register_hardware_printer").onSuccess { value ->
+                if (value != null) _state.value = _state.value.copy(printerName = value)
+            }
+            settingsRepo.get("register_hardware_drawer").onSuccess { value ->
+                if (value != null) _state.value = _state.value.copy(drawerName = value)
+            }
+            settingsRepo.get("register_hardware_display").onSuccess { value ->
+                if (value != null) _state.value = _state.value.copy(displayName = value)
+            }
+            settingsRepo.get("register_hardware_scanner").onSuccess { value ->
+                if (value != null) _state.value = _state.value.copy(scannerName = value)
             }
         }
     }
@@ -100,6 +116,10 @@ class RegisterSettingsViewModel @Inject constructor(
                 return@launch
             }
             storeRepo.upsertRegister(register).onSuccess {
+                settingsRepo.set("register_hardware_printer", _state.value.printerName, null)
+                settingsRepo.set("register_hardware_drawer", _state.value.drawerName, null)
+                settingsRepo.set("register_hardware_display", _state.value.displayName, null)
+                settingsRepo.set("register_hardware_scanner", _state.value.scannerName, null)
                 _state.value = _state.value.copy(isSaving = false, saved = true)
             }.onFailure { err ->
                 _state.value = _state.value.copy(isSaving = false, error = err.message)
@@ -107,6 +127,7 @@ class RegisterSettingsViewModel @Inject constructor(
         }
     }
 
+    @Suppress("EmptyFunctionBlock") // Hardware test dispatch stub
     fun testHardware(type: HardwareType) {
         // In production: dispatch to hardware manager
     }

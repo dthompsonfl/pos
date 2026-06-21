@@ -12,7 +12,6 @@ private const val URI_PATTERN_DASHBOARD = "dashboard"
 private const val URI_PATTERN_CATALOG = "catalog"
 private const val URI_PATTERN_FLOOR = "floor"
 private const val URI_PATTERN_KDS = "kds"
-private const val URI_PATTERN_ORDERS = "orders"
 private const val URI_PATTERN_EMPLOYEES = "employees"
 private const val URI_PATTERN_INVENTORY = "inventory"
 private const val URI_PATTERN_SHIFTS = "shifts"
@@ -107,7 +106,6 @@ fun handleDeepLink(navController: NavController, uri: Uri): Boolean {
         path == "/$URI_PATTERN_CATALOG" || pathSegments.firstOrNull() == URI_PATTERN_CATALOG -> Screen.Catalog.route
         path == "/$URI_PATTERN_FLOOR" || pathSegments.firstOrNull() == URI_PATTERN_FLOOR -> Screen.Floor.route
         path == "/$URI_PATTERN_KDS" || pathSegments.firstOrNull() == URI_PATTERN_KDS -> Screen.Kds.route
-        path == "/$URI_PATTERN_ORDERS" || pathSegments.firstOrNull() == URI_PATTERN_ORDERS -> Screen.OrderHistory.route
         path == "/$URI_PATTERN_EMPLOYEES" || pathSegments.firstOrNull() == URI_PATTERN_EMPLOYEES -> Screen.Employees.route
         path == "/$URI_PATTERN_INVENTORY" || pathSegments.firstOrNull() == URI_PATTERN_INVENTORY -> Screen.Inventory.route
         path == "/$URI_PATTERN_SHIFTS" || pathSegments.firstOrNull() == URI_PATTERN_SHIFTS -> Screen.Shifts.route
@@ -121,11 +119,6 @@ fun handleDeepLink(navController: NavController, uri: Uri): Boolean {
             Screen.ProductDetail.build(pathSegments[1])
         }
 
-        // Order detail
-        pathSegments.firstOrNull() == "order" && pathSegments.size == 2 -> {
-            Screen.OrderDetail.build(pathSegments[1])
-        }
-
         // Customer detail
         pathSegments.firstOrNull() == "customer" && pathSegments.size == 2 -> {
             Screen.CustomerDetail.build(pathSegments[1])
@@ -134,11 +127,6 @@ fun handleDeepLink(navController: NavController, uri: Uri): Boolean {
         // Reservation detail
         pathSegments.firstOrNull() == "reservation" && pathSegments.size == 2 -> {
             Screen.ReservationDetail.build(pathSegments[1])
-        }
-
-        // Report detail
-        pathSegments.firstOrNull() == "report" && pathSegments.size == 2 -> {
-            Screen.ReportDetail.build(pathSegments[1])
         }
 
         // Settings sub-pages
@@ -158,15 +146,7 @@ fun handleDeepLink(navController: NavController, uri: Uri): Boolean {
 
         // Onboarding steps
         pathSegments.firstOrNull() == "onboarding" && pathSegments.size == 2 -> {
-            when (pathSegments[1]) {
-                "store" -> Screen.OnboardingStore.route
-                "register" -> Screen.OnboardingRegister.route
-                "employee" -> Screen.OnboardingEmployee.route
-                "product" -> Screen.OnboardingProduct.route
-                "payment" -> Screen.OnboardingPayment.route
-                "complete" -> Screen.OnboardingComplete.route
-                else -> Screen.Onboarding.route
-            }
+            Screen.Onboarding.route
         }
 
         // Cart with orderId

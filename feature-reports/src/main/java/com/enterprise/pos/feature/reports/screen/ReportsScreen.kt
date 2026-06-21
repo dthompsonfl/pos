@@ -56,7 +56,7 @@ fun ReportsScreen(storeId: StoreId, viewModel: ReportsViewModel = hiltViewModel(
         Column(Modifier.fillMaxSize().padding(padding)) {
             // Tab row
             ScrollableTabRow(selectedTabIndex = state.activeTab.ordinal) {
-                ReportTab.values().forEachIndexed { idx, tab ->
+                ReportTab.entries.forEachIndexed { idx, tab ->
                     Tab(
                         selected = state.activeTab == tab,
                         onClick = { viewModel.setTab(tab) },
