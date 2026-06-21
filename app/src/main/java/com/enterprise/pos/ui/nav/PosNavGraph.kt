@@ -132,7 +132,7 @@ private fun NavGraphBuilder.coreDestinations(
             storeId = storeId,
             registerId = registerId,
             employeeId = employeeId,
-            onOrderCreated = { orderId, _ -> navController.safeNavigate(Screen.Cart.build(orderId.value)) }
+            onOrderCreated = { orderId, _ -> navController.safeNavigate(Screen.Cart.build(orderId)) }
         )
     }
 
