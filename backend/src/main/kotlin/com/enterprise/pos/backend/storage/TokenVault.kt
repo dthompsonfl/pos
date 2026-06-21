@@ -41,8 +41,14 @@ data class ProviderToken(
  */
 class TokenVault {
 
+    private data class OAuthState(
+        val provider: String,
+        val createdAt: Long,
+        val expiresAt: Long
+    )
+
     private val tokens = ConcurrentHashMap<String, ProviderToken>() // "provider:merchantId" -> ProviderToken
-    private val oauthStates = ConcurrentHashMap<String, String>() // state -> provider (shopify, square)
+    private val oauthStates = ConcurrentHashMap<String, OAuthState>() // state -> provider + TTL
     private val logger = org.slf4j.LoggerFactory.getLogger(TokenVault::class.java)
 
     // SECURITY WARNING: Never log accessToken or refreshToken values.
@@ -87,20 +93,36 @@ class TokenVault {
     // OAuth state management for CSRF protection
 
     /** Store a valid OAuth state nonce and its associated provider. */
-    fun storeOAuthState(state: String, provider: String) {
-        oauthStates[state] = provider
+    fun storeOAuthState(
+        state: String,
+        provider: String,
+        ttlMillis: Long = DEFAULT_OAUTH_STATE_TTL_MILLIS
+    ) {
+        require(state.isNotBlank()) { "OAuth state must not be blank" }
+        require(provider.isNotBlank()) { "OAuth provider must not be blank" }
+        purgeExpiredStates()
+        val now = System.currentTimeMillis()
+        oauthStates[state] = OAuthState(
+            provider = provider,
+            createdAt = now,
+            expiresAt = now + ttlMillis.coerceAtLeast(1L)
+        )
     }
 
     /** Consume (remove) a state nonce and return the associated provider if valid. */
     fun consumeOAuthState(state: String): String? {
-        return oauthStates.remove(state)
+        purgeExpiredStates()
+        val value = oauthStates.remove(state) ?: return null
+        return if (value.expiresAt >= System.currentTimeMillis()) value.provider else null
     }
 
-    /** Purge expired states. In this in-memory implementation states never expire,
-     * but in production they should have a TTL of 10 minutes. */
-    @Suppress("EmptyFunctionBlock") // In-memory OAuth state has no TTL
-    fun purgeExpiredStates() {
-        // No-op for in-memory; production should use Redis with TTL
+    /** Purge expired states. The default in-memory TTL is 10 minutes. */
+    fun purgeExpiredStates(now: Long = System.currentTimeMillis()) {
+        oauthStates.entries.removeIf { it.value.expiresAt < now }
+    }
+
+    companion object {
+        private const val DEFAULT_OAUTH_STATE_TTL_MILLIS = 10L * 60 * 1000
     }
 }
 

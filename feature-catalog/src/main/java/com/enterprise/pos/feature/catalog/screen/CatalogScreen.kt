@@ -43,6 +43,12 @@ fun CatalogScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { viewModel.loadCategories() }
 
+    LaunchedEffect(storeId, registerId) {
+        if (storeId != null && registerId != null) {
+            viewModel.bindRegisterContext(storeId, registerId)
+        }
+    }
+
     val pendingCartOrderId = state.pendingCartOrderId
     LaunchedEffect(pendingCartOrderId) {
         pendingCartOrderId?.let { orderId ->

@@ -1,131 +1,80 @@
 # Final Verification
 
-Last updated: 2026-06-20
+Last updated: 2026-06-21
 
 ## Current Production Status
 
-The application **builds and compiles successfully** (`:app:compileDebugKotlin`, `:app:lintDebug`, `:app:assembleDebug` all pass). This pass resolved compilation errors across the `:data`, `:hardware`, `:ui`, `:payment-stripe`, and all feature modules (`feature-customers`, `feature-restaurant`, `feature-employees`, `feature-settings`, `feature-inventory`). The complete POS platform described in the implementation prompt still requires additional functional implementation and validation before merchant deployment, but the codebase is now compile-clean.
+The app is still **not production-ready**, but the main branch now contains an additional POS hardening slice for catalog-to-cart, checkout amount derivation, backend payment context enforcement, merchant-scoped sync routes, and short-lived in-memory backend state.
 
-## Completed In This Pass
+A previous 2026-06-20 verification pass recorded successful `:app:compileDebugKotlin`, `:app:lintDebug`, and `:app:assembleDebug`. Those commands were **not re-run** for the 2026-06-21 GitHub connector-only pass because this environment did not have a local checkout of `dthompsonfl/pos` and direct clone/network access was blocked. The touched files were read back from `main` after each change for static inspection.
 
-### Build, CI, and Compilation
+## Completed In The 2026-06-21 Pass
 
-- **All modules compile**: `:data`, `:hardware`, `:ui`, `:payment-api`, `:payment-stripe`, `:payment-square`, `:payment-shopify`, and all `:feature-*` modules now compile cleanly.
-- `:app:compileDebugKotlin` passes with only deprecation warnings (no errors).
-- `:app:lintDebug` passes with no fatal issues.
-- `:app:assembleDebug` produces a debug APK successfully.
-- Enabled Room schema export in `data/src/main/java/com/enterprise/pos/data/db/PosDatabase.kt`.
-- Added KSP Room schema export arguments in `data/build.gradle.kts`.
-- Registered `MIGRATION_2_3` in `data/src/main/java/com/enterprise/pos/data/db/PosMigrations.kt`.
-- Added `data/src/test/java/com/enterprise/pos/data/db/PosMigrationsTest.kt` to guard migration registration and duplicate version pairs.
-- Split CI into Android build/test/lint, backend build/test, and signed release jobs in `.github/workflows/ci.yml`.
-- Added explicit release signing validation in `app/build.gradle.kts` so release builds fail if signing inputs are absent.
+### Catalog To Cart
 
-### Module-Specific Fixes
+- `CatalogScreen` now receives active POS context (`storeId`, `registerId`, `employeeId`) from the app navigation graph.
+- Product tile taps create or reuse a persisted editable retail order through the existing `CreateOrderUseCase` and `AddItemToOrderUseCase` instead of only navigating to product detail.
+- Successful product add navigates to the cart route for the persisted order.
+- Active retail cart observation is now scoped to the current store and register so one register does not pick up another register's draft retail order.
+- Product detail navigation remains the fallback when catalog is shown without POS context.
 
-#### `:data` module
-- Fixed `SyncOutboxDao` by using existing `SyncOutboxExt.kt` extension function (`enqueue`) instead of adding an ungenerateable method to the Room interface.
-- Fixed `OrderRepositoryImpl` by adding missing `catalogDao` parameter.
-- Fixed `ReservationRepositoryImpl` with `checkTableAvailability` method.
-- Fixed `InventoryManagementRepositoryImpl` with all missing interface methods.
-- Fixed `SettingRepositoryImpl.observeAll()` return type mapping.
-- Fixed `AuditLogRepositoryImpl` by replacing `synchronized` with `Mutex` + `withLock` to avoid "suspension point inside critical section" error.
+### Checkout Amount Due
 
-#### `:hardware` module
-- Fixed `asStateFlow` imports in `ReceiptPrinterManager.kt`, `CustomerDisplayManager.kt`, `CashDrawerManager.kt`.
-- Resolved `EscPosPrinter` type conflict by using the existing `com.enterprise.pos.hardware.escpos.EscPosPrinter` interface.
-- Removed duplicate `Logger` provider (`provideHardwareLogger()`) from `HardwareModule.kt` to resolve Hilt duplicate binding against `DataModule.provideLogger()`.
+- `CheckoutViewModel.loadOrder()` now observes `orders.observeOrder(orderId)` instead of taking a one-time snapshot.
+- Checkout derives `amountDue` from persisted `Order.amountDue` and refreshes when the order changes.
+- Cash tender input now parses through the `Money` value type instead of `Double`.
+- Single-payment processing charges the current persisted amount due.
+- Split tenders are capped to the remaining due and update remaining balance after each persisted tender.
+- Order completion now waits for `orders.markPaid(...)` before clearing processing state and emitting payment completion.
 
-#### `:ui` module
-- Replaced `Divider` with `HorizontalDivider` across all UI files.
-- Fixed `Icons.Filled.TrendingUp` → `Icons.AutoMirrored.Filled.TrendingUp` in `DashboardScreen.kt`.
-- Removed duplicate private `PosTextField` composable in `PosForm.kt` that shadowed the public `PosTextField` from `PosTextField.kt`.
+### Backend Payment Routes
 
-#### `:payment-stripe` module
-- Added Hilt plugin and KSP compiler to `payment-stripe/build.gradle.kts`.
-- Replaced `StripeTerminalPaymentProvider.kt` (743 lines, Stripe Terminal SDK 3.7.1 dependent) with a compileable stub that preserves the same constructor signature and `PaymentProvider` interface implementation. The original implementation is preserved in Git history.
-- Deleted `StripePaymentModelMapper.kt`, `StripeTerminalReaderDelegate.kt`, `StripeTerminalDiscoveryDelegate.kt` — these were tightly coupled to Stripe Terminal SDK 3.7.1 APIs that changed significantly (error codes, `Reader.Builder`, `PaymentIntent.charges`, `onBatteryLevelUpdate`, etc.).
-- Updated `StripeTerminalPaymentProviderTest.kt` to remove `StripePaymentModelMapperTest` and keep only stub-compatible tests.
-- Kept `StripeTerminalModule.kt` (Hilt provider binding) intact.
-- **Stripe Terminal SDK 3.7.1 API drift noted**: The original integration used `OfflineMode`, `connectReader` signature, `setOfflineMode`, `TerminalErrorCode.PAYMENT_INTENT_UNEXPECTED_STATUS`, `READER_NOT_CONNECTED`, `API_CONNECTION_ERROR`, `NETWORK_ERROR`, `INTERNET_NOT_REACHABLE`, `RefundParameters.Builder`, `createRefund`, and `TerminalListener.onBatteryLevelUpdate` — all removed or changed in SDK 3.7.1. Restoring the full SDK integration requires a dedicated Stripe Terminal SDK upgrade pass, not a compilation fix.
+- Terminal connection-token, payment-intent creation, capture, refund, and lookup routes now require `X-Merchant-Id`, `X-Store-Id`, and `X-Register-Id` or equivalent request fields.
+- Idempotency keys are scoped by merchant, store, register, and client key.
+- Routes now also honor the standard `Idempotency-Key` request header.
+- Stripe PaymentIntent metadata includes merchant/store/register, client idempotency key, order id, and employee id where available.
+- Payment lookup, capture, and refund verify that the Stripe PaymentIntent metadata matches the current POS context before returning or mutating it.
 
-#### `:app` module
-- Fixed `OnboardingScreen.kt` and `OnboardingViewModel.kt`: replaced invalid Kotlin function type receiver syntax `(OnboardingProgress. -> OnboardingProgress)` with `(OnboardingProgress.() -> OnboardingProgress)`.
-- Fixed `PosNavigation.kt`: added `noinline` to nullable transition parameters (`enterTransition`, `exitTransition`, `popEnterTransition`, `popExitTransition`) to resolve Kotlin inline parameter restriction.
-- Fixed `SecureStorageAuthTokenProvider.kt`: changed `Result.failure(IllegalStateException(...))` to `Result.failure("...")` to match the `Result.failure(String)` overload.
+### Backend Sync Routes
 
-#### Feature modules
-- `feature-customers`: Fixed `CustomerDetailScreen.kt` (unresolved `customer` variable) and `CustomerEditScreen.kt` (`KeyboardType.PostalAddress` does not exist; replaced with `KeyboardType.Text`).
-- `feature-employees`: Fixed `EmployeeDetailScreen.kt` (smart cast issues, missing imports for `PasswordVisualTransformation`, `KeyboardOptions`, `KeyboardType`, unresolved `employee` in AlertDialog scope). Fixed `RoleEditorScreen.kt` (smart cast impossible on delegated properties).
-- `feature-restaurant`: Fixed `ReservationDetailScreen.kt` (smart cast on `notes`). Fixed `TableDetailScreen.kt` (missing `background` import, `final class` extension in preview, typos in named arguments, missing explicit type parameters on `emptyFlow()`).
-- `feature-settings`: Fixed `ReceiptSettingsScreen.kt` (missing `AnimatedVisibility` import). Fixed `SettingsScreen.kt` (missing `java.util.Locale` import). Fixed `RegisterSettingsViewModel.kt` (suspend call in non-suspend function). Fixed `SettingsViewModel.kt` (missing `kotlinx.coroutines.flow.first` import).
-- `feature-inventory`: Fixed `PurchaseOrderScreen.kt` (private `PosTextField` shadowing, missing `viewModel` parameter). Fixed `StockAdjustmentScreen.kt` (wrong `Money` import, removed broken preview with anonymous `InventoryManagementRepository` that was out of sync with interface). Fixed `SupplierDetailScreen.kt` (missing `PurchaseOrderLine` import). Fixed `PurchaseOrderViewModel.kt` (`shippingCost`/`taxPercent` referenced from wrong object). Fixed `SupplierDetailViewModel.kt` (suspend function called outside coroutine). Added `cancelPurchaseOrder` to `InventoryManagementRepository` interface and `InventoryManagementRepositoryImpl` stub.
+- Sync event requests now include merchant context.
+- Sync ingest, list, lookup, queue pull, acknowledge, and conflict resolution routes require merchant context.
+- `SyncEventStore` now stores `merchantId`, queries by merchant, and scopes idempotency by merchant plus idempotency key.
 
-### Security and Release Safety
+### Backend State Hardening
 
-- Removed the unjustified `RECORD_AUDIO` permission from `app/src/main/AndroidManifest.xml`.
-- Kept release build flags disabling demo data, simulated providers, and manual card entry.
-- Hardened Stripe release mode so real card-present flow fails closed when no real `StripeTerminalSdkBridge` is configured.
-- Removed hardcoded real-mode Visa/4242 card metadata from Stripe captured results.
+- `IdempotencyStore` now expires in-memory records after a 24-hour TTL.
+- `TokenVault` now expires OAuth state nonces after a 10-minute TTL and purges expired states.
+- These are development hardening improvements only; production still requires durable encrypted persistence.
 
-### Hardware Honesty
+## Previously Verified In The 2026-06-20 Pass
 
-- Implemented real network ESC/POS socket writes in `NetworkPrinterDriver`.
-- Changed USB printer, Bluetooth printer, USB relay cash drawer, and customer display no-op paths to fail closed instead of reporting fake success.
-- Changed receipt/kitchen print managers to return explicit hardware failures when no printer is configured or connected.
-- Changed printer-kick cash drawer opening to return the actual printer pulse result instead of swallowing failures.
+The prior pass recorded:
 
-### POS Shell and UI Foundation
+- `:app:compileDebugKotlin` — build successful with deprecation warnings only.
+- `:app:lintDebug` — build successful.
+- `:app:assembleDebug` — build successful and produced a debug APK.
+- Room schema export and migration registration were hardened.
+- CI was split into Android build/test/lint, backend build/test, and signed release jobs.
+- Release signing validation was added.
+- Multiple module compile issues were resolved across `:data`, `:hardware`, `:ui`, `:payment-stripe`, `:app`, and feature modules.
+- Stripe real mode was changed to fail closed when no real `StripeTerminalSdkBridge` is configured.
+- Hardware no-op paths were changed to fail closed where applicable.
+- README claims were reduced to match current implementation status.
 
-- Added top status/command bar with business, register, employee, shift, sync, reader, printer, and lock controls.
-- Added persistent navigation rail for tablet/POS-width layouts while keeping bottom navigation for compact layouts.
-- Fixed the More menu so rows navigate when tapped.
-- Added register lock support through `EmployeesViewModel.lockRegister()`.
-- Added reusable Compose components in `app/src/main/java/com/enterprise/pos/ui/components/PosComponents.kt` for scaffold, top bar, rail, drawer, bottom bar, action bar, search, status chip, table, form section, dialogs, empty/error/loading states, permission gate, money text, quantity input, date range input, and CRUD list/detail shells.
+## Files Modified In The 2026-06-21 Pass
 
-### Documentation
-
-- Replaced overstated README claims with current implementation status, disabled/fail-closed features, production requirements, and security notes.
-- Replaced stale verification claims in this document with the current pass status.
-
-## Files Created
-
-- `app/src/main/java/com/enterprise/pos/ui/components/PosComponents.kt`
-- `data/src/test/java/com/enterprise/pos/data/db/PosMigrationsTest.kt`
-- `payment-stripe/src/main/java/com/enterprise/pos/payment/stripe/StripeTerminalPaymentProvider.kt` (stub replacement)
-
-## Files Modified
-
-- `.github/workflows/ci.yml`
+- `app/src/main/java/com/enterprise/pos/ui/nav/PosNavGraph.kt`
+- `feature-catalog/src/main/java/com/enterprise/pos/feature/catalog/state/CatalogViewModel.kt`
+- `feature-catalog/src/main/java/com/enterprise/pos/feature/catalog/screen/CatalogScreen.kt`
+- `feature-sales/src/main/java/com/enterprise/pos/feature/sales/state/CheckoutViewModel.kt`
+- `backend/src/main/kotlin/com/enterprise/pos/backend/routes/PaymentRoutes.kt`
+- `backend/src/main/kotlin/com/enterprise/pos/backend/routes/SyncRoutes.kt`
+- `backend/src/main/kotlin/com/enterprise/pos/backend/storage/SyncEventStore.kt`
+- `backend/src/main/kotlin/com/enterprise/pos/backend/storage/IdempotencyStore.kt`
+- `backend/src/main/kotlin/com/enterprise/pos/backend/storage/TokenVault.kt`
 - `README.md`
 - `FINAL_VERIFICATION.md`
-- `app/build.gradle.kts`
-- `app/src/main/AndroidManifest.xml`
-- `app/src/main/java/com/enterprise/pos/MainActivity.kt`
-- `app/src/main/java/com/enterprise/pos/di/SecureStorageAuthTokenProvider.kt`
-- `app/src/main/java/com/enterprise/pos/ui/nav/PosNavigation.kt`
-- `app/src/main/java/com/enterprise/pos/ui/onboarding/OnboardingScreen.kt`
-- `app/src/main/java/com/enterprise/pos/ui/onboarding/OnboardingViewModel.kt`
-- `data/build.gradle.kts`
-- `data/src/main/java/com/enterprise/pos/data/db/PosDatabase.kt`
-- `data/src/main/java/com/enterprise/pos/data/db/PosMigrations.kt`
-- `data/src/main/java/com/enterprise/pos/data/repository/RepositoryImpls.kt`
-- `data/src/main/java/com/enterprise/pos/data/security/AuditLogRepositoryImpl.kt`
-- `feature-employees/src/main/java/com/enterprise/pos/feature/employees/state/EmployeesViewModel.kt`
-- `hardware/src/main/java/com/enterprise/pos/hardware/di/HardwareModule.kt`
-- `hardware/src/main/java/com/enterprise/pos/hardware/drawer/CashDrawer.kt`
-- `hardware/src/main/java/com/enterprise/pos/hardware/printer/Printer.kt`
-- `payment-stripe/src/main/java/com/enterprise/pos/payment/stripe/StripePaymentProvider.kt`
-- `payment-stripe/build.gradle.kts`
-- `domain/src/main/java/com/enterprise/pos/domain/repository/EnterpriseRepositories.kt`
-- `ui/src/main/java/com/enterprise/pos/ui/components/PosForm.kt`
-- Multiple feature screen and viewmodel files across `feature-customers`, `feature-employees`, `feature-restaurant`, `feature-settings`, `feature-inventory`.
-
-## Files Deleted
-
-- `payment-stripe/src/main/java/com/enterprise/pos/payment/stripe/StripePaymentModelMapper.kt` (Stripe Terminal SDK 3.7.1 API incompatibility)
-- `payment-stripe/src/main/java/com/enterprise/pos/payment/stripe/StripeTerminalReaderDelegate.kt` (Stripe Terminal SDK 3.7.1 API incompatibility)
-- `payment-stripe/src/main/java/com/enterprise/pos/payment/stripe/StripeTerminalDiscoveryDelegate.kt` (Stripe Terminal SDK 3.7.1 API incompatibility)
 
 ## Commands Required For Verification
 
@@ -154,24 +103,29 @@ POS_RELEASE_KEY_PASSWORD=... \
 ./gradlew assembleRelease
 ```
 
-## Validation Completed In This Pass
+## Validation Completed In The 2026-06-21 Pass
 
-- `:app:compileDebugKotlin` — **BUILD SUCCESSFUL** (only deprecation warnings remain).
-- `:app:lintDebug` — **BUILD SUCCESSFUL**.
-- `:app:assembleDebug` — **BUILD SUCCESSFUL** (debug APK produced).
+- Read-back static inspection of all touched files from the GitHub `main` branch after updates.
+- Verified that catalog navigation now passes POS context into `CatalogScreen`.
+- Verified that checkout amount due is derived from observed persisted order state.
+- Verified that backend payment and sync route code requires POS/merchant context and scopes idempotency.
+
+## Validation Not Completed In The 2026-06-21 Pass
+
+- Gradle compile, lint, unit tests, backend tests, and assemble tasks were not run after these changes.
+- No Stripe account, Terminal reader, webhook endpoint, physical hardware, or merchant credentials were available for end-to-end validation.
+- No instrumentation or UI tests were run for the catalog-to-cart or checkout flows.
 
 ## Remaining Limitations
 
-- The Stripe Terminal payment provider is a **stub** (simulated mode only). Real card-present payments require restoring the full Stripe Terminal SDK integration after upgrading to a compatible SDK version or adapting to SDK 3.7.1 APIs.
-- Catalog product tap is still not fully wired to active cart/order.
-- Checkout still needs to derive `amountDue` from persisted order state in all routes.
+- The Stripe Terminal payment provider is still a **stub** for real card-present collection. Real card-present payments require restoring the full Stripe Terminal SDK integration after upgrading or adapting to the repository's selected SDK/API surface.
 - Full CRUD is not complete for every business entity listed in the implementation prompt.
 - Sync still needs full unification around one durable outbox across all repositories.
-- Backend sync, migration, auth, idempotency, merchant isolation, webhooks, and token vaulting need durable production implementations.
+- Backend sync, migration, auth, idempotency, merchant isolation, webhooks, and token vaulting still need durable production implementations. The 2026-06-21 pass improved route scoping and in-memory TTL behavior but did not replace the backend stores with production persistence.
 - Square and Shopify remain disabled as production payment providers unless real integrations are added.
-- Gift cards/store credit need a backend-backed/tamper-resistant ledger before production redemption.
+- Gift cards/store credit need a backend-backed, tamper-resistant ledger before production redemption.
 - Reports and Z-report still need reconciliation tests against persisted orders, tenders, refunds, cash movements, inventory movements, and sync events.
-- Employee auth still needs employee selector/badge/code flow, full failed-attempt persistence, session/device enforcement, and manager override flow hardening.
+- Employee auth still needs employee selector/badge/code flow, full failed-attempt persistence, session/device enforcement, and hardened manager override flow.
 - First-run production onboarding still needs complete store/register/device/tax/payment/hardware/receipt/shift setup gating.
 - Physical printer, drawer, scanner, reader, and customer display workflows require device validation.
 
@@ -187,21 +141,10 @@ POS_RELEASE_KEY_PASSWORD=... \
 ## Security Notes
 
 - Release builds do not enable simulated providers or manual card entry through build flags.
-- Release builds now fail if explicit signing inputs are not present.
+- Release builds fail if explicit signing inputs are not present.
 - Android does not request microphone access.
-- Stripe real mode fails closed when the real Terminal bridge is missing (currently the stub always throws `NotImplementedError` for real mode).
+- Stripe real mode fails closed when the real Terminal bridge is missing.
 - USB/Bluetooth printer, USB relay drawer, and customer display no-op paths fail closed.
 - Room destructive migrations are not enabled in production database construction.
 - Provider secrets must remain on the backend, not in Android configuration or UI.
-
-## Confirmation For Release Build Intent
-
-Current code is intended to prevent release builds from including:
-
-- Fake card success: disabled through release flags and Stripe fail-closed behavior.
-- Raw provider secrets: Android uses provider identifiers/backend URL only; backend must hold secrets.
-- Raw employee PIN storage: domain/data code is designed around PIN hashes, but full auth hardening remains open.
-- Destructive migrations: Room builder uses explicit migrations only.
-- Debug signing: release signing validation requires explicit signing inputs.
-- Fake printer success: printer/drawer/display no-op paths now fail closed.
-- Fake migration completion: migration remains scaffolded and must not be presented as production complete until backend workers/token vault/reconciliation are implemented.
+- In-memory backend token/idempotency stores are development-only and must be replaced before production deployment.

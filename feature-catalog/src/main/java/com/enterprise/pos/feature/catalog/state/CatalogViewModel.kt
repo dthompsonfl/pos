@@ -57,18 +57,25 @@ class CatalogViewModel @Inject constructor(
     val state: StateFlow<CatalogState> = _state.asStateFlow()
 
     private var openOrdersJob: Job? = null
+    private var observedStoreId: StoreId? = null
+    private var observedRegisterId: RegisterId? = null
 
     init {
         viewModelScope.launch {
             storeRepo.current()
                 .onSuccess { store ->
                     _state.value = _state.value.copy(storeId = store.id)
-                    observeRetailOrder(store.id)
                 }
                 .onFailure { error ->
                     _state.value = _state.value.copy(isLoading = false, error = error.message)
                 }
         }
+    }
+
+    fun bindRegisterContext(storeId: StoreId, registerId: RegisterId) {
+        if (observedStoreId == storeId && observedRegisterId == registerId && openOrdersJob != null) return
+        _state.value = _state.value.copy(storeId = storeId, activeOrderId = null)
+        observeRetailOrder(storeId, registerId)
     }
 
     fun loadCategories() {
@@ -179,20 +186,20 @@ class CatalogViewModel @Inject constructor(
         ).getOrThrow()
     }
 
-    private fun observeRetailOrder(storeId: StoreId) {
+    private fun observeRetailOrder(storeId: StoreId, registerId: RegisterId) {
         openOrdersJob?.cancel()
+        observedStoreId = storeId
+        observedRegisterId = registerId
         openOrdersJob = orders.observeOpenOrders(storeId)
             .onEach { openOrders ->
                 val current = _state.value.activeOrderId
                 val currentStillOpen = openOrders.any { order ->
-                    order.id == current && order.isEditableRetailOrder(storeId, order.registerId)
+                    order.id == current && order.isEditableRetailOrder(storeId, registerId)
                 }
                 if (currentStillOpen) return@onEach
 
                 val latestRetailOrder = openOrders
-                    .filter { order ->
-                        order.diningMode == DiningMode.RETAIL && order.status in editableCartStatuses
-                    }
+                    .filter { order -> order.isEditableRetailOrder(storeId, registerId) }
                     .maxByOrNull { it.updatedAt }
                     ?.id
 
