@@ -8,14 +8,15 @@ This repository is **not yet production-ready**. The current main branch is bein
 
 | Area | Status | Notes |
 | --- | --- | --- |
-| Android build setup | In progress | CI now separates Android and backend jobs. Local verification still requires Android SDK and Gradle distribution access. |
+| Android build setup | In progress | CI now separates Android and backend jobs. Local verification still requires Android SDK and Gradle distribution access. The 2026-06-21 connector-only pass was statically read back but not Gradle-verified. |
 | Release signing | Hardened | Release builds require explicit signing environment variables and must not fall back to debug signing. |
 | Room schema/migrations | Hardened | Schema export is enabled and the v2 to v3 migration is registered. Migration registration has a unit test. |
-| POS shell/navigation | In progress | The app has login gating, top status bar, bottom navigation, drawer menu, and tablet navigation rail. More sub-feature routes still need deeper CRUD screens. |
-| Payments | Mixed | Cash provider is local. Stripe real mode fails closed unless a real Terminal SDK bridge and backend are configured. Simulated providers are debug-only. Square/Shopify payment providers are not production payment paths. |
-| Hardware | Mixed | Network ESC/POS printing uses a real TCP socket. USB/Bluetooth printer, USB relay drawer, and customer display paths fail closed until implemented. |
-| Sync/backend | Scaffolded | Backend and sync contracts exist, but production needs durable persistence, auth/merchant isolation, idempotency storage, and conflict handling validation. |
-| Migration | Scaffolded | Migration must be backend/OAuth/token-vault driven. Android must not collect raw Shopify, Square, or Stripe secrets. |
+| POS shell/navigation | In progress | The app has login gating, top status bar, bottom navigation, drawer menu, and tablet navigation rail. Catalog product taps now create/reuse a register-scoped retail order and navigate to cart. More sub-feature routes still need deeper CRUD screens. |
+| Sales/checkout | In progress | Checkout now observes persisted order state for amount due, uses exact money parsing for cash, and caps split tenders against remaining due. Gift card/store-credit redemption still needs a backend-backed ledger. |
+| Payments | Mixed | Cash provider is local. Backend Stripe routes require POS context and scoped idempotency, but Android Stripe real mode still fails closed unless a real Terminal SDK bridge and backend are configured. Simulated providers are debug-only. Square/Shopify payment providers are not production payment paths. |
+| Hardware | Mixed | Network ESC/POS printing uses a real TCP socket. USB/Bluetooth printer, USB relay drawer, and customer display paths fail closed until implemented and physically validated. |
+| Sync/backend | Scaffolded | Backend sync routes now require merchant context and store merchant-scoped events. Production still needs durable persistence, auth enforcement, durable idempotency, webhook reconciliation, and conflict handling validation. |
+| Migration | Scaffolded | Migration must be backend/OAuth/token-vault driven. OAuth state now expires in the in-memory token vault, but production token storage still requires encrypted durable storage. Android must not collect raw Shopify, Square, or Stripe secrets. |
 | Reports/Z-report | In progress | Reporting must be verified against persisted orders, tenders, refunds, inventory movements, shifts, and sync facts before production use. |
 | Security | In progress | Raw provider secrets are not intended for Android. Release disables simulated/manual card paths. Additional session/device/manager-override hardening is still required. |
 
@@ -94,13 +95,13 @@ POS_RELEASE_KEY_PASSWORD=... \
 Before using this app with real merchants, complete and verify at least:
 
 1. Real Stripe Terminal SDK bridge binding and reader lifecycle testing.
-2. Backend auth, merchant/store/register isolation, durable idempotency, webhooks, and reconciliation.
-3. Durable sync outbox processing with conflict visibility and retry validation.
+2. Backend auth, durable merchant/store/register isolation, durable idempotency, webhooks, and reconciliation.
+3. Durable sync outbox processing with conflict visibility and retry validation across every repository.
 4. Complete sale lifecycle validation: cart, checkout, tenders, refunds, voids, receipts, inventory decrement, audit, sync, reports, and Z-report reconciliation.
 5. CRUD completion and permission enforcement for all major business entities.
 6. First-run onboarding for store, register, employee, tax, payment, hardware, receipt, and shift setup.
 7. Physical hardware validation for printers, drawers, scanners, readers, and customer displays.
-8. Migration OAuth/token-vault/jobs/workers/conflict-resolution flow.
+8. Migration OAuth/token-vault/jobs/workers/conflict-resolution flow with encrypted durable token storage.
 9. Security hardening for employee sessions, failed login lockout, manager override, device registration, and audit ingestion.
 
 ## Security Notes
