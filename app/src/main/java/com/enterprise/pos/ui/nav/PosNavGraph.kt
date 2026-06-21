@@ -132,13 +132,17 @@ private fun NavGraphBuilder.coreDestinations(
             storeId = storeId,
             registerId = registerId,
             employeeId = employeeId,
-            onOrderCreated = { orderId, _ -> navController.safeNavigate(Screen.Cart.build(orderId)) }
+            onOrderCreated = { orderId, _ -> navController.safeNavigate(Screen.Cart.build(orderId.value)) }
         )
     }
 
     posDestination(Screen.Catalog) {
         CatalogScreen(
-            onProductClick = { productId -> navController.safeNavigate(Screen.ProductDetail.build(productId.value)) }
+            storeId = storeId,
+            registerId = registerId,
+            employeeId = employeeId,
+            onProductClick = { productId -> navController.safeNavigate(Screen.ProductDetail.build(productId.value)) },
+            onCartReady = { orderId -> navController.safeNavigate(Screen.Cart.build(orderId.value)) }
         )
     }
 
