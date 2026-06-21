@@ -7,10 +7,8 @@ import com.enterprise.pos.core.Logger
 import com.enterprise.pos.core.Money
 import com.enterprise.pos.core.NoopLogger
 import com.enterprise.pos.core.OrderId
-import com.enterprise.pos.core.PaymentErrorCode
 import com.enterprise.pos.core.PaymentId
 import com.enterprise.pos.core.Result
-import com.enterprise.pos.domain.model.OrderStatus
 import com.enterprise.pos.domain.model.Payment as DomainPayment
 import com.enterprise.pos.domain.model.TenderSplit
 import com.enterprise.pos.domain.repository.GiftCardRepository
@@ -23,6 +21,7 @@ import com.enterprise.pos.payment.model.PaymentResult
 import com.enterprise.pos.payment.router.PaymentRouter
 import com.enterprise.pos.payment.router.RoutedPaymentIntent
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -85,24 +84,36 @@ class CheckoutViewModel @Inject constructor(
     @Suppress("unused")
     val events = _events.receiveAsFlow()
 
+    private var orderObserverJob: Job? = null
+
     init {
         _state.value = _state.value.copy(availableProviders = router.availableProviders)
     }
 
     fun loadOrder(orderId: OrderId) {
-        // Pull live total from the order repository.
-        viewModelScope.launch {
-            orders.getById(orderId)
-                .onSuccess { order ->
-                    val due = order?.grandTotal ?: Money.ZERO
+        orderObserverJob?.cancel()
+        orderObserverJob = viewModelScope.launch {
+            orders.observeOrder(orderId).collect { order ->
+                if (order == null) {
                     _state.value = _state.value.copy(
-                        amountDue = due,
-                        originalTotal = due
+                        amountDue = Money.ZERO,
+                        originalTotal = Money.ZERO,
+                        cashChangeDue = Money.ZERO,
+                        error = "Order not found"
                     )
+                    return@collect
                 }
-                .onFailure {
-                    _state.value = _state.value.copy(amountDue = Money.ZERO, originalTotal = Money.ZERO)
-                }
+
+                val amountDue = order.amountDue
+                val cashTendered = parseMoneyInput(_state.value.cashTenderedInput) ?: Money.ZERO
+                val cashChange = (cashTendered - amountDue).atLeastZero()
+                _state.value = _state.value.copy(
+                    amountDue = amountDue,
+                    originalTotal = order.grandTotal,
+                    cashChangeDue = cashChange,
+                    error = if (_state.value.error == "Order not found") null else _state.value.error
+                )
+            }
         }
     }
 
@@ -167,7 +178,6 @@ class CheckoutViewModel @Inject constructor(
         viewModelScope.launch {
             giftCards.redeem(code, amountToApply, orderId, employeeId)
                 .onSuccess { card ->
-                    // Record the gift-card tender as a completed split with proper provider type.
                     val newCompleted = _state.value.completedTenders + TenderSplit(
                         provider = "GIFT_CARD",
                         amount = amountToApply,
@@ -175,7 +185,7 @@ class CheckoutViewModel @Inject constructor(
                     )
                     _state.value = _state.value.copy(
                         giftCardBalance = card.balance,
-                        amountDue = _state.value.amountDue - amountToApply,
+                        amountDue = (_state.value.amountDue - amountToApply).atLeastZero(),
                         giftCardCode = "",
                         completedTenders = newCompleted
                     )
@@ -190,17 +200,16 @@ class CheckoutViewModel @Inject constructor(
 
     // --- Cash tender ---
     fun setCashTendered(input: String) {
-        val parsed = input.toDoubleOrNull() ?: 0.0
-        val tendered = Money.of(parsed)
-        val change = tendered - _state.value.amountDue
+        val tendered = parseMoneyInput(input) ?: Money.ZERO
+        val change = (tendered - _state.value.amountDue).atLeastZero()
         _state.value = _state.value.copy(
             cashTenderedInput = input,
-            cashChangeDue = if (change.isNegative()) Money.ZERO else change
+            cashChangeDue = change
         )
     }
 
     fun canProcessCash(): Boolean {
-        val tendered = Money.of(_state.value.cashTenderedInput.toDoubleOrNull() ?: 0.0)
+        val tendered = parseMoneyInput(_state.value.cashTenderedInput) ?: Money.ZERO
         return (!tendered.isZero()) && (tendered >= _state.value.amountDue)
     }
 
@@ -231,13 +240,17 @@ class CheckoutViewModel @Inject constructor(
 
     private suspend fun processSinglePayment(orderId: OrderId, employeeId: EmployeeId) {
         val amount = _state.value.amountDue
+        if (!amount.isPositive()) {
+            _state.value = _state.value.copy(isProcessing = false, error = "No amount due for this order")
+            return
+        }
+
         val requested = _state.value.selectedProvider
             ?: run {
                 _state.value = _state.value.copy(isProcessing = false, error = "Select a payment method")
                 return
             }
 
-        // Cash has a special path that needs the tendered amount.
         if (requested == PaymentProviderId.CASH) {
             if (!canProcessCash()) {
                 _state.value = _state.value.copy(isProcessing = false, error = "Enter cash tendered >= amount due")
@@ -273,24 +286,22 @@ class CheckoutViewModel @Inject constructor(
     }
 
     private suspend fun processCashPayment(orderId: OrderId, employeeId: EmployeeId) {
-        val tendered = Money.of(_state.value.cashTenderedInput.toDoubleOrNull() ?: 0.0)
+        val tendered = parseMoneyInput(_state.value.cashTenderedInput) ?: Money.ZERO
         val due = _state.value.amountDue
-        // The PaymentRouter.CashPaymentProvider does not know the tendered amount; we record both.
         val init = router.initiatePayment(orderId, due, requestedProvider = PaymentProviderId.CASH)
         if (init is Result.Failure) {
             _state.value = _state.value.copy(isProcessing = false, error = init.error.message)
             _events.trySend(CheckoutUiEvent.Error(init.error.message))
             return
         }
-            when (val r = router.collectPayment((init as Result.Success).value) { event ->
-                _state.value = _state.value.copy(currentEvent = event)
-            }) {
-                is Result.Success -> {
-                    val cashResult = r.value.copy(
-                    // Augment with cash-specific accounting metadata.
+        when (val r = router.collectPayment((init as Result.Success).value) { event ->
+            _state.value = _state.value.copy(currentEvent = event)
+        }) {
+            is Result.Success -> {
+                val cashResult = r.value.copy(
                     metadata = mapOf(
                         "cash_tendered_minor" to tendered.minorUnits.toString(),
-                        "cash_change_minor" to (tendered - due).minorUnits.toString(),
+                        "cash_change_minor" to (tendered - due).atLeastZero().minorUnits.toString(),
                         "employee_id" to employeeId.value
                     )
                 )
@@ -315,7 +326,8 @@ class CheckoutViewModel @Inject constructor(
                 _events.trySend(CheckoutUiEvent.Error("Unknown provider: ${split.provider}"))
                 continue
             }
-            val init = router.initiatePayment(orderId, split.amount, requestedProvider = providerId)
+            val chargeAmount = if (split.amount > remaining) remaining else split.amount
+            val init = router.initiatePayment(orderId, chargeAmount, requestedProvider = providerId)
             if (init is Result.Failure) {
                 _state.value = _state.value.copy(isProcessing = false, error = "Split ${split.provider} failed: ${init.error.message}")
                 _events.trySend(CheckoutUiEvent.Error("Split ${split.provider} failed: ${init.error.message}"))
@@ -332,8 +344,6 @@ class CheckoutViewModel @Inject constructor(
                 }
                 is Result.Success -> {
                     val paymentResult = r.value
-                    // Persist each tender independently via markPaid.
-                    // markPaid accumulates payments and only marks the order PAID when amountDue reaches zero.
                     orders.markPaid(orderId, paymentResult.toDomainPayment(orderId), employeeId)
                         .onFailure { err ->
                             logger.e(TAG, "Failed to persist split tender: ${err.message}")
@@ -344,19 +354,18 @@ class CheckoutViewModel @Inject constructor(
                     completed.add(
                         TenderSplit(
                             provider = split.provider,
-                            amount = split.amount,
+                            amount = paymentResult.amount,
                             paymentId = paymentResult.id,
                             reference = paymentResult.providerTransactionId
                         )
                     )
-                    remaining -= split.amount
-                    _state.value = _state.value.copy(completedTenders = completed.toList())
+                    remaining = (remaining - paymentResult.amount).atLeastZero()
+                    _state.value = _state.value.copy(completedTenders = completed.toList(), amountDue = remaining)
                 }
             }
         }
 
         if (remaining.isZero()) {
-            // All tenders completed and persisted. Order is now fully paid.
             _state.value = _state.value.copy(
                 isProcessing = false,
                 amountDue = Money.ZERO,
@@ -378,28 +387,24 @@ class CheckoutViewModel @Inject constructor(
     }
 
     /**
-     * Mark order PAID + persist the payment + write audit log + queue sync event.
-     * All in one transactional call.
+     * Mark order paid/partially paid + persist the payment + write audit log + queue sync event.
      */
-    private fun completeOrderWithPayment(orderId: OrderId, employeeId: EmployeeId, payment: PaymentResult) {
-        viewModelScope.launch {
-            // 1. Persist the payment via the order repository's transactional close.
-            orders.markPaid(orderId, payment.toDomainPayment(orderId), employeeId)
-                .onSuccess {
-                    _state.value = _state.value.copy(
-                        isProcessing = false,
-                        result = payment,
-                        amountDue = Money.ZERO,
-                        currentEvent = PaymentEvent.Success()
-                    )
-                    _events.trySend(CheckoutUiEvent.PaymentCompleted(payment.provider, payment.amount))
-                }
-                .onFailure { err ->
-                    logger.e(TAG, "Failed to mark order paid: ${err.message}")
-                    _state.value = _state.value.copy(isProcessing = false, error = err.message)
-                    _events.trySend(CheckoutUiEvent.Error(err.message))
-                }
-        }
+    private suspend fun completeOrderWithPayment(orderId: OrderId, employeeId: EmployeeId, payment: PaymentResult) {
+        orders.markPaid(orderId, payment.toDomainPayment(orderId), employeeId)
+            .onSuccess { updatedOrder ->
+                _state.value = _state.value.copy(
+                    isProcessing = false,
+                    result = payment,
+                    amountDue = updatedOrder.amountDue,
+                    currentEvent = PaymentEvent.Success()
+                )
+                _events.trySend(CheckoutUiEvent.PaymentCompleted(payment.provider, payment.amount))
+            }
+            .onFailure { err ->
+                logger.e(TAG, "Failed to mark order paid: ${err.message}")
+                _state.value = _state.value.copy(isProcessing = false, error = err.message)
+                _events.trySend(CheckoutUiEvent.Error(err.message))
+            }
     }
 
     fun cancel() {
@@ -433,6 +438,9 @@ class CheckoutViewModel @Inject constructor(
                 }
         }
     }
+
+    private fun parseMoneyInput(input: String): Money? =
+        runCatching { Money.parse(input) }.getOrNull()
 
     companion object { private const val TAG = "CheckoutViewModel" }
 }

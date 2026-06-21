@@ -18,6 +18,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class SyncEventRequest(
     val eventId: String,
+    val merchantId: String? = null,
     val storeId: String,
     val registerId: String? = null,
     val employeeId: String? = null,
@@ -60,6 +61,18 @@ data class SyncEventListResponse(
     val count: Int
 )
 
+private suspend fun ApplicationCall.requireMerchantId(value: String? = null): String? {
+    val merchantId = request.headers["X-Merchant-Id"]?.takeIf { it.isNotBlank() }
+        ?: value?.takeIf { it.isNotBlank() }
+    if (merchantId == null) {
+        respond(
+            HttpStatusCode.BadRequest,
+            SyncEventResponse(status = "REJECTED", message = "X-Merchant-Id is required")
+        )
+    }
+    return merchantId
+}
+
 // ---------------------------------------------------------------------------
 // Route wiring
 // ---------------------------------------------------------------------------
@@ -80,9 +93,11 @@ fun Route.syncEventsRoute() {
         // POST /v1/sync/events — ingest an outbox event from the POS
         post("/v1/sync/events") {
             val req = call.receive<SyncEventRequest>()
+            val merchantId = call.requireMerchantId(req.merchantId) ?: return@post
 
             val event = SyncEvent(
                 eventId = req.eventId,
+                merchantId = merchantId,
                 storeId = req.storeId,
                 registerId = req.registerId,
                 employeeId = req.employeeId,
@@ -131,11 +146,19 @@ fun Route.syncEventsRoute() {
 
         // POST /v1/sync/events/{id}/resolve — store conflict resolution choice
         post("/v1/sync/events/{id}/resolve") {
+            val merchantId = call.requireMerchantId() ?: return@post
             val id = call.parameters["id"]
                 ?: return@post call.respond(
                     HttpStatusCode.BadRequest,
                     SyncEventResponse(status = "REJECTED", message = "Missing event id")
                 )
+            val existing = store.getEvent(id)
+            if (existing == null || existing.merchantId != merchantId) {
+                return@post call.respond(
+                    HttpStatusCode.NotFound,
+                    SyncEventResponse(status = "REJECTED", message = "Event $id not found")
+                )
+            }
             val req = call.receive<SyncResolveRequest>()
 
             val result = store.resolveEvent(id, req.resolution, req.localVersionJson)
@@ -164,6 +187,7 @@ fun Route.syncEventsRoute() {
 
         // GET /v1/sync/events — query events by storeId, status, date range
         get("/v1/sync/events") {
+            val merchantId = call.requireMerchantId(call.request.queryParameters["merchantId"]) ?: return@get
             val storeId = call.request.queryParameters["storeId"]
             val statusParam = call.request.queryParameters["status"]
             val from = call.request.queryParameters["from"]?.toLongOrNull()
@@ -181,6 +205,7 @@ fun Route.syncEventsRoute() {
             }
 
             val events = store.queryEvents(
+                merchantId = merchantId,
                 storeId = storeId,
                 status = status,
                 fromTimestamp = from,
@@ -192,6 +217,7 @@ fun Route.syncEventsRoute() {
 
         // GET /v1/sync/events/{id} — get a specific event
         get("/v1/sync/events/{id}") {
+            val merchantId = call.requireMerchantId() ?: return@get
             val id = call.parameters["id"]
                 ?: return@get call.respond(
                     HttpStatusCode.BadRequest,
@@ -199,7 +225,7 @@ fun Route.syncEventsRoute() {
                 )
 
             val event = store.getEvent(id)
-            if (event != null) {
+            if (event != null && event.merchantId == merchantId) {
                 call.respond(event)
             } else {
                 call.respond(
@@ -211,18 +237,20 @@ fun Route.syncEventsRoute() {
 
         // GET /v1/sync/queue/{storeId} — get pending events for a store (POS pull)
         get("/v1/sync/queue/{storeId}") {
+            val merchantId = call.requireMerchantId() ?: return@get
             val storeId = call.parameters["storeId"]
                 ?: return@get call.respond(
                     HttpStatusCode.BadRequest,
                     SyncEventResponse(status = "REJECTED", message = "Missing storeId")
                 )
 
-            val events = store.getPendingEvents(storeId)
+            val events = store.getPendingEvents(storeId, merchantId)
             call.respond(SyncEventListResponse(events = events, count = events.size))
         }
 
         // POST /v1/sync/queue/{storeId}/ack — acknowledge events as processed
         post("/v1/sync/queue/{storeId}/ack") {
+            val merchantId = call.requireMerchantId() ?: return@post
             val storeId = call.parameters["storeId"]
                 ?: return@post call.respond(
                     HttpStatusCode.BadRequest,
@@ -230,7 +258,7 @@ fun Route.syncEventsRoute() {
                 )
             val req = call.receive<SyncQueueAckRequest>()
 
-            val result = store.acknowledgeEvents(storeId, req.eventIds)
+            val result = store.acknowledgeEvents(storeId, req.eventIds, merchantId)
             result.fold(
                 onSuccess = { ackCount ->
                     call.respond(

@@ -18,8 +18,55 @@ import java.util.concurrent.ConcurrentHashMap
 @Serializable
 data class PaymentErrorResponse(val code: String, val message: String, val details: String? = null)
 
+private data class PosRequestContext(
+    val merchantId: String,
+    val storeId: String,
+    val registerId: String
+)
+
+private suspend fun ApplicationCall.requirePosContext(
+    merchantId: String? = null,
+    storeId: String? = null,
+    registerId: String? = null
+): PosRequestContext? {
+    val resolvedMerchantId = request.headers["X-Merchant-Id"]?.takeIf { it.isNotBlank() }
+        ?: merchantId?.takeIf { it.isNotBlank() }
+    val resolvedStoreId = request.headers["X-Store-Id"]?.takeIf { it.isNotBlank() }
+        ?: storeId?.takeIf { it.isNotBlank() }
+    val resolvedRegisterId = request.headers["X-Register-Id"]?.takeIf { it.isNotBlank() }
+        ?: registerId?.takeIf { it.isNotBlank() }
+
+    if (resolvedMerchantId == null || resolvedStoreId == null || resolvedRegisterId == null) {
+        respond(
+            HttpStatusCode.BadRequest,
+            PaymentErrorResponse(
+                code = "missing_pos_context",
+                message = "X-Merchant-Id, X-Store-Id, and X-Register-Id are required"
+            )
+        )
+        return null
+    }
+
+    return PosRequestContext(resolvedMerchantId, resolvedStoreId, resolvedRegisterId)
+}
+
+private fun scopedIdempotencyKey(context: PosRequestContext, key: String): String =
+    listOf(context.merchantId, context.storeId, context.registerId, key).joinToString(":")
+
+private fun posMetadata(context: PosRequestContext): Map<String, String> = mapOf(
+    "merchant_id" to context.merchantId,
+    "store_id" to context.storeId,
+    "register_id" to context.registerId
+)
+
 @Serializable
-data class ConnectionTokenRequest(val locationId: String? = null, val idempotencyKey: String? = null)
+data class ConnectionTokenRequest(
+    val locationId: String? = null,
+    val merchantId: String? = null,
+    val storeId: String? = null,
+    val registerId: String? = null,
+    val idempotencyKey: String? = null
+)
 
 @Serializable
 data class ConnectionTokenResponse(val secret: String)
@@ -29,8 +76,12 @@ fun Route.terminalConnectionTokenRoute() {
     authenticate("pos-api-key") {
         post("/v1/terminal/connection-token") {
             val req = call.receiveNullable<ConnectionTokenRequest>() ?: ConnectionTokenRequest()
-            val idempotencyKey = req.idempotencyKey ?: UUID.randomUUID().toString()
-            val secret = StripeService.createConnectionToken(req.locationId, idempotencyKey = idempotencyKey)
+            val context = call.requirePosContext(req.merchantId, req.storeId, req.registerId) ?: return@post
+            val clientIdempotencyKey = req.idempotencyKey ?: UUID.randomUUID().toString()
+            val secret = StripeService.createConnectionToken(
+                req.locationId,
+                idempotencyKey = scopedIdempotencyKey(context, clientIdempotencyKey)
+            )
             call.respond(ConnectionTokenResponse(secret))
         }
     }
@@ -42,6 +93,11 @@ data class CreatePaymentIntentRequest(
     val currency: String = "usd",
     val description: String? = null,
     val metadata: Map<String, String> = emptyMap(),
+    val merchantId: String? = null,
+    val storeId: String? = null,
+    val registerId: String? = null,
+    val orderId: String? = null,
+    val employeeId: String? = null,
     val idempotencyKey: String? = null
 )
 
@@ -58,6 +114,7 @@ fun Route.paymentIntentsRoute() {
     authenticate("pos-api-key") {
         post("/v1/payments/payment-intents") {
             val req = call.receive<CreatePaymentIntentRequest>()
+            val context = call.requirePosContext(req.merchantId, req.storeId, req.registerId) ?: return@post
 
             if (req.amountMinor <= 0) {
                 return@post call.respond(
@@ -72,13 +129,17 @@ fun Route.paymentIntentsRoute() {
                 )
             }
 
-            val idempotencyKey = req.idempotencyKey ?: UUID.randomUUID().toString()
+            val clientIdempotencyKey = req.idempotencyKey ?: UUID.randomUUID().toString()
             val intent = StripeService.createPaymentIntent(
                 amountMinor = req.amountMinor,
                 currency = req.currency,
                 description = req.description,
-                metadata = req.metadata + ("client_idempotency_key" to idempotencyKey),
-                idempotencyKey = idempotencyKey
+                metadata = req.metadata + posMetadata(context) + mapOf(
+                    "client_idempotency_key" to clientIdempotencyKey,
+                    "order_id" to (req.orderId ?: ""),
+                    "employee_id" to (req.employeeId ?: "")
+                ).filterValues { it.isNotBlank() },
+                idempotencyKey = scopedIdempotencyKey(context, clientIdempotencyKey)
             )
             call.respond(
                 CreatePaymentIntentResponse(
@@ -93,7 +154,13 @@ fun Route.paymentIntentsRoute() {
 }
 
 @Serializable
-data class CaptureRequest(val tipAmountMinor: Long? = null, val idempotencyKey: String? = null)
+data class CaptureRequest(
+    val tipAmountMinor: Long? = null,
+    val merchantId: String? = null,
+    val storeId: String? = null,
+    val registerId: String? = null,
+    val idempotencyKey: String? = null
+)
 
 @Serializable
 data class CaptureResponse(val id: String, val status: String, val amount: Long, val amountCapturable: Long)
@@ -114,8 +181,13 @@ fun Route.captureRoute() {
             }
 
             val req = call.receiveNullable<CaptureRequest>() ?: CaptureRequest()
-            val idempotencyKey = req.idempotencyKey ?: UUID.randomUUID().toString()
-            val intent = StripeService.capturePaymentIntent(id, req.tipAmountMinor, idempotencyKey = idempotencyKey)
+            val context = call.requirePosContext(req.merchantId, req.storeId, req.registerId) ?: return@post
+            val clientIdempotencyKey = req.idempotencyKey ?: UUID.randomUUID().toString()
+            val intent = StripeService.capturePaymentIntent(
+                id,
+                req.tipAmountMinor,
+                idempotencyKey = scopedIdempotencyKey(context, clientIdempotencyKey)
+            )
             call.respond(
                 CaptureResponse(
                     id = intent.id,
@@ -133,6 +205,9 @@ data class RefundRequest(
     val paymentIntentId: String,
     val amountMinor: Long? = null,
     val reason: String? = null,
+    val merchantId: String? = null,
+    val storeId: String? = null,
+    val registerId: String? = null,
     val idempotencyKey: String? = null
 )
 
@@ -144,6 +219,7 @@ fun Route.refundsRoute() {
     authenticate("pos-api-key") {
         post("/v1/refunds") {
             val req = call.receive<RefundRequest>()
+            val context = call.requirePosContext(req.merchantId, req.storeId, req.registerId) ?: return@post
 
             if (req.paymentIntentId.isBlank()) {
                 return@post call.respond(
@@ -158,12 +234,12 @@ fun Route.refundsRoute() {
                 )
             }
 
-            val idempotencyKey = req.idempotencyKey ?: UUID.randomUUID().toString()
+            val clientIdempotencyKey = req.idempotencyKey ?: UUID.randomUUID().toString()
             val refund = StripeService.refund(
                 chargeIdOrPaymentIntentId = req.paymentIntentId,
                 amountMinor = req.amountMinor,
                 reason = req.reason,
-                idempotencyKey = idempotencyKey
+                idempotencyKey = scopedIdempotencyKey(context, clientIdempotencyKey)
             )
             call.respond(RefundResponse(refund.id, refund.status, refund.amount))
         }
@@ -184,6 +260,7 @@ data class PaymentLookupResponse(
 fun Route.paymentLookupRoute() {
     authenticate("pos-api-key") {
         get("/v1/payments/{id}") {
+            call.requirePosContext() ?: return@get
             val id = call.parameters["id"] ?: return@get call.respond(
                 HttpStatusCode.BadRequest,
                 PaymentErrorResponse("missing_id", "Payment intent ID is required")
@@ -242,15 +319,10 @@ fun Route.stripeWebhookRoute(config: BackendConfig) {
             )
         }
 
-        // Deduplicate by event ID
         if (processedWebhookEvents.putIfAbsent(event.id, System.currentTimeMillis()) != null) {
-            return@post call.respond(HttpStatusCode.OK) // already processed
+            return@post call.respond(HttpStatusCode.OK)
         }
 
-        // Persist event before processing (in-memory; replace with database in production)
-        // Webhook event persistence to durable store is planned for v2.5.
-
-        // Process based on event type
         when (event.type) {
             "payment_intent.succeeded" -> {
                 // Internal payment status update, KDS notification, and sync outbox emission
