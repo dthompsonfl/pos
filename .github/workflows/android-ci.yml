@@ -55,16 +55,27 @@ jobs:
           ./gradlew --version
 
       - name: Clean Android build
-        run: ./gradlew clean --stacktrace
+        run: ./gradlew clean --stacktrace --console=plain
 
       - name: Run Android unit tests
-        run: ./gradlew testDebugUnitTest --continue --stacktrace
+        shell: bash
+        run: |
+          set +e
+          ./gradlew testDebugUnitTest --continue --console=plain > android-unit-test.log 2>&1
+          status=$?
+          if [ "$status" -ne 0 ]; then
+            grep -nE "(e: |error:|FAILED|Compilation error|Unresolved reference)" android-unit-test.log || true
+            tail -n 120 android-unit-test.log
+          else
+            tail -n 40 android-unit-test.log
+          fi
+          exit "$status"
 
       - name: Build debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        run: ./gradlew assembleDebug --stacktrace --console=plain
 
       - name: Run Android Lint
-        run: ./gradlew lintDebug --continue
+        run: ./gradlew lintDebug --continue --console=plain
 
       - name: Upload test results
         if: always()
@@ -72,6 +83,7 @@ jobs:
         with:
           name: android-test-results
           path: |
+            android-unit-test.log
             **/build/test-results/**/*.xml
             **/build/reports/tests/**
 
@@ -115,10 +127,10 @@ jobs:
           ./gradlew --version
 
       - name: Run backend tests
-        run: ./gradlew :backend:test --stacktrace
+        run: ./gradlew :backend:test --stacktrace --console=plain
 
       - name: Build backend distribution
-        run: ./gradlew :backend:installDist --stacktrace
+        run: ./gradlew :backend:installDist --stacktrace --console=plain
 
       - name: Upload backend test results
         if: always()
@@ -160,7 +172,7 @@ jobs:
         run: echo "${{ secrets.SIGNING_KEYSTORE_BASE64 }}" | base64 -d > app/release.keystore
 
       - name: Build release APK
-        run: ./gradlew assembleRelease --stacktrace
+        run: ./gradlew assembleRelease --stacktrace --console=plain
         env:
           POS_RELEASE_KEYSTORE_PATH: release.keystore
           POS_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.SIGNING_KEYSTORE_PASSWORD }}
