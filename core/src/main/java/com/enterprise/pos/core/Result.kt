@@ -28,6 +28,9 @@ sealed class Result<out T> {
         return this
     }
 
+    fun isSuccess(): Boolean = this is Success
+    fun isFailure(): Boolean = this is Failure
+
     fun getOrNull(): T? = (this as? Success)?.value
     fun getOrThrow(): T = when (this) {
         is Success -> value
