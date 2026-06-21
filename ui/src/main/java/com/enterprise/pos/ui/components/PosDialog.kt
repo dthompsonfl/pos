@@ -24,6 +24,36 @@ import androidx.compose.ui.window.Dialog
 import com.enterprise.pos.ui.theme.PosTheme
 
 // ============================================================================
+// PosBottomSheet — Modal bottom sheet with title and content
+// ============================================================================
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PosBottomSheet(
+    title: String,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        modifier = modifier.semantics { contentDescription = "$title sheet" }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 32.dp, start = 16.dp, end = 16.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+            content()
+        }
+    }
+}
+
+// ============================================================================
 // AlertDialog — Confirmation dialog (title, message, confirm/cancel)
 // ============================================================================
 @Composable

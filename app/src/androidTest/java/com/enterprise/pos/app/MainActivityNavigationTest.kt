@@ -6,6 +6,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.enterprise.pos.MainActivity
+import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
 import org.junit.Rule
 import org.junit.Test
@@ -15,7 +17,10 @@ import org.junit.runner.RunWith
 @HiltAndroidTest
 class MainActivityNavigationTest {
 
-    @get:Rule
+    @get:Rule(order = 0)
+    val hiltRule = HiltAndroidRule(this)
+
+    @get:Rule(order = 1)
     val composeRule = createAndroidComposeRule<MainActivity>()
 
     @Test
@@ -71,7 +76,10 @@ class MainActivityNavigationTest {
 @HiltAndroidTest
 class CheckoutFlowTest {
 
-    @get:Rule
+    @get:Rule(order = 0)
+    val hiltRule = HiltAndroidRule(this)
+
+    @get:Rule(order = 1)
     val composeRule = createAndroidComposeRule<MainActivity>()
 
     @Test
@@ -152,7 +160,10 @@ class CheckoutFlowTest {
 @HiltAndroidTest
 class SettingsFlowTest {
 
-    @get:Rule
+    @get:Rule(order = 0)
+    val hiltRule = HiltAndroidRule(this)
+
+    @get:Rule(order = 1)
     val composeRule = createAndroidComposeRule<MainActivity>()
 
     @Test
@@ -188,8 +199,11 @@ class SettingsFlowTest {
 @HiltAndroidTest
 class OnboardingFlowTest {
 
-    @get:Rule
-    val composeRule = createAndroidComposeRule<OnboardingActivity>()
+    @get:Rule(order = 0)
+    val hiltRule = HiltAndroidRule(this)
+
+    @get:Rule(order = 1)
+    val composeRule = createAndroidComposeRule<MainActivity>()
 
     @Test
     fun `onboarding welcome screen shows`() {

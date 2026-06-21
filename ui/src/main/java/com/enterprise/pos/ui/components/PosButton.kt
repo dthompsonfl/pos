@@ -18,6 +18,30 @@ import androidx.compose.ui.unit.dp
 import com.enterprise.pos.ui.theme.PosTheme
 
 // ============================================================================
+// PosButton — Universal button with variants
+// ============================================================================
+enum class ButtonVariant { PRIMARY, SECONDARY, TERTIARY, DANGER }
+
+@Composable
+fun PosButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    isLoading: Boolean = false,
+    icon: ImageVector? = null,
+    variant: ButtonVariant = ButtonVariant.PRIMARY,
+    shape: Shape = MaterialTheme.shapes.medium
+) {
+    when (variant) {
+        ButtonVariant.PRIMARY -> PrimaryButton(text, onClick, modifier, enabled, isLoading, icon, shape)
+        ButtonVariant.SECONDARY -> SecondaryButton(text, onClick, modifier, enabled, icon, shape)
+        ButtonVariant.TERTIARY -> TertiaryButton(text, onClick, modifier, enabled, icon, shape)
+        ButtonVariant.DANGER -> DangerButton(text, onClick, modifier, enabled, icon, shape)
+    }
+}
+
+// ============================================================================
 // PrimaryButton — Filled, high emphasis
 // ============================================================================
 @Composable
