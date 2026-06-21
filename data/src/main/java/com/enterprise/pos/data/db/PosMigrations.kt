@@ -7,8 +7,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * Explicit Room migrations — production-safe (no destructive changes).
  *
  * Pattern for adding a new migration:
- *   1. Bump PosDatabase version.
- *   2. Add a `val MIGRATION_N_NPLUS1 = object : Migration(N, N+1) { ... }` here.
+ *   1. Bump [LATEST_VERSION].
+ *   2. Add an `object MIGRATION_N_NPLUS1 : Migration(N, N+1) { ... }` here.
  *   3. Add it to the [ALL] array.
  *
  * Each migration must use ALTER TABLE or CREATE TABLE statements — never DROP TABLE
@@ -17,7 +17,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  */
 object PosMigrations {
 
-    val MIGRATION_2_3: Migration = object : Migration(2, 3) {
+    const val LATEST_VERSION = 5
+
+    object MIGRATION_2_3 : Migration(2, 3) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("""
                 CREATE TABLE IF NOT EXISTS sync_outbox (
@@ -49,7 +51,7 @@ object PosMigrations {
         }
     }
 
-    val MIGRATION_3_4: Migration = object : Migration(3, 4) {
+    object MIGRATION_3_4 : Migration(3, 4) {
         override fun migrate(db: SupportSQLiteDatabase) {
             // Add modifier_groups table for catalog modifier support
             db.execSQL("""
@@ -74,7 +76,7 @@ object PosMigrations {
         }
     }
 
-    val MIGRATION_4_5: Migration = object : Migration(4, 5) {
+    object MIGRATION_4_5 : Migration(4, 5) {
         override fun migrate(db: SupportSQLiteDatabase) {
             // Add extended customer fields
             db.execSQL("ALTER TABLE customers ADD COLUMN firstName TEXT")
