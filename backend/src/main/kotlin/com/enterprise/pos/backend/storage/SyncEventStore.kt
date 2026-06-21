@@ -28,12 +28,13 @@ enum class SyncEventStatus {
  * This class is immutable so that concurrent reads are safe. Mutations happen
  * by replacing the entry in the backing store with a copy. Production deployments
  * should replace the in-memory store with a database table that has a unique
- * constraint on idempotency_key.
+ * constraint on merchant_id + idempotency_key.
  */
 @Serializable
 @Suppress("LongParameterList")
 data class SyncEvent(
     val eventId: String,
+    val merchantId: String = "unknown",
     val storeId: String,
     val registerId: String? = null,
     val employeeId: String? = null,
@@ -59,53 +60,58 @@ data class SyncEvent(
  * Replace this class with a database-backed implementation (e.g., PostgreSQL with
  * Exposed or jOOQ). The required schema is:
  *   - events table with columns matching SyncEvent fields
- *   - UNIQUE INDEX on idempotency_key
- *   - INDEX on store_id + status for queue queries
+ *   - UNIQUE INDEX on merchant_id + idempotency_key
+ *   - INDEX on merchant_id + store_id + status for queue queries
  */
 class SyncEventStore {
 
     private val events = ConcurrentHashMap<String, SyncEvent>() // eventId -> SyncEvent
-    private val idempotencyIndex = ConcurrentHashMap<String, String>() // idempotencyKey -> eventId
+    private val idempotencyIndex = ConcurrentHashMap<String, String>() // merchant:idempotencyKey -> eventId
     private val logger = org.slf4j.LoggerFactory.getLogger(SyncEventStore::class.java)
 
-    /**
-     * Store a sync event. Validates required fields, deduplicates by idempotency key,
-     * and marks the event as ACCEPTED then APPLIED.
-     *
-     * Returns a Result containing the event with its final status, or a failure if
-     * validation fails or the idempotency index is corrupted.
-     */
     fun storeEvent(event: SyncEvent): Result<SyncEvent> {
-        val existingEventId = idempotencyIndex[event.idempotencyKey]
-        if (existingEventId != null) {
-            val existing = events[existingEventId]
-            return if (existing != null) {
-                logger.info("Duplicate idempotency key {} for event {}", event.idempotencyKey, existingEventId)
-                Result.success(existing.copy(status = SyncEventStatus.DUPLICATE))
-            } else {
-                Result.failure(IllegalStateException("Idempotency index corrupted for key ${event.idempotencyKey}"))
-            }
+        if (event.merchantId.isBlank() || event.storeId.isBlank()) {
+            return Result.failure(IllegalArgumentException("merchantId and storeId are required"))
         }
-
         if (event.entityType.isBlank() || event.entityId.isBlank() || event.operation.isBlank()) {
             return Result.failure(IllegalArgumentException("entityType, entityId, and operation are required"))
         }
-
         if (event.schemaVersion <= 0) {
             return Result.failure(IllegalArgumentException("schemaVersion must be positive"))
         }
 
+        val scopedIdempotencyKey = idempotencyScope(event.merchantId, event.idempotencyKey)
+        val existingEventId = idempotencyIndex[scopedIdempotencyKey]
+        if (existingEventId != null) {
+            val existing = events[existingEventId]
+            return if (existing != null) {
+                logger.info(
+                    "Duplicate idempotency key {} for merchant {} event {}",
+                    event.idempotencyKey,
+                    event.merchantId,
+                    existingEventId
+                )
+                Result.success(existing.copy(status = SyncEventStatus.DUPLICATE))
+            } else {
+                Result.failure(IllegalStateException("Idempotency index corrupted for key $scopedIdempotencyKey"))
+            }
+        }
+
         val accepted = event.copy(status = SyncEventStatus.ACCEPTED)
         events[event.eventId] = accepted
-        idempotencyIndex[event.idempotencyKey] = event.eventId
+        idempotencyIndex[scopedIdempotencyKey] = event.eventId
 
         // Apply to in-memory state. In production this would be a database transaction.
         val applied = accepted.copy(status = SyncEventStatus.APPLIED, appliedAt = System.currentTimeMillis())
         events[event.eventId] = applied
 
         logger.info(
-            "Stored sync event {} for store {} (entity {} {})",
-            event.eventId, event.storeId, event.entityType, event.operation
+            "Stored sync event {} for merchant {} store {} (entity {} {})",
+            event.eventId,
+            event.merchantId,
+            event.storeId,
+            event.entityType,
+            event.operation
         )
         return Result.success(applied)
     }
@@ -113,17 +119,15 @@ class SyncEventStore {
     /** Retrieve a single event by its event ID. */
     fun getEvent(eventId: String): SyncEvent? = events[eventId]
 
-    /**
-     * Query events with optional filters. All filters are ANDed together.
-     * Results are sorted by createdAt descending (newest first).
-     */
     fun queryEvents(
+        merchantId: String? = null,
         storeId: String? = null,
         status: SyncEventStatus? = null,
         fromTimestamp: Long? = null,
         toTimestamp: Long? = null
     ): List<SyncEvent> {
         return events.values.asSequence()
+            .filter { merchantId == null || it.merchantId == merchantId }
             .filter { storeId == null || it.storeId == storeId }
             .filter { status == null || it.status == status }
             .filter { fromTimestamp == null || it.createdAt >= fromTimestamp }
@@ -132,44 +136,32 @@ class SyncEventStore {
             .toList()
     }
 
-    /**
-     * Get pending events for a store that the POS should pull and apply.
-     * Returns events in status ACCEPTED or PENDING, sorted by createdAt ascending
-     * so the POS can apply them in order.
-     */
-    fun getPendingEvents(storeId: String): List<SyncEvent> {
+    fun getPendingEvents(storeId: String, merchantId: String? = null): List<SyncEvent> {
         return events.values.asSequence()
+            .filter { merchantId == null || it.merchantId == merchantId }
             .filter { it.storeId == storeId }
             .filter { it.status == SyncEventStatus.PENDING || it.status == SyncEventStatus.ACCEPTED }
             .sortedBy { it.createdAt }
             .toList()
     }
 
-    /**
-     * Acknowledge events as processed by the POS. Events are moved to APPLIED status.
-     * Returns the number of events actually acknowledged.
-     */
-    fun acknowledgeEvents(storeId: String, eventIds: List<String>): Result<Int> {
+    fun acknowledgeEvents(storeId: String, eventIds: List<String>, merchantId: String? = null): Result<Int> {
         var ackCount = 0
         eventIds.forEach { eventId ->
             val event = events[eventId]
-            if (event != null && event.storeId == storeId) {
+            if (event != null && event.storeId == storeId && (merchantId == null || event.merchantId == merchantId)) {
                 events[eventId] = event.copy(
                     status = SyncEventStatus.APPLIED,
                     appliedAt = System.currentTimeMillis()
                 )
                 ackCount++
             } else {
-                logger.warn("Acknowledge failed for event {}: not found or wrong store", eventId)
+                logger.warn("Acknowledge failed for event {}: not found, wrong store, or wrong merchant", eventId)
             }
         }
         return Result.success(ackCount)
     }
 
-    /**
-     * Store a conflict resolution choice for an event. The event must exist.
-     * After resolution the event status becomes RESOLVED.
-     */
     fun resolveEvent(eventId: String, resolution: String, localVersionJson: String?): Result<SyncEvent> {
         val event = events[eventId]
             ?: return Result.failure(NoSuchElementException("Event $eventId not found"))
@@ -187,4 +179,7 @@ class SyncEventStore {
 
     /** Total count of events currently in the store. */
     fun count(): Int = events.size
+
+    private fun idempotencyScope(merchantId: String, idempotencyKey: String): String =
+        "$merchantId:$idempotencyKey"
 }
