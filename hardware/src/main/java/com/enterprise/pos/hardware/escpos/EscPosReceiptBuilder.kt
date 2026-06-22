@@ -40,7 +40,7 @@ class EscPosReceiptBuilder(
         append(EscPosCommands.separator(LINE_WIDTH))
 
         val date = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date(order.createdAt))
-        append(EscPosCommands.textLine("Order: ${order.id.value.takeLast(8).uppercase()}"))
+        append(EscPosCommands.textLine("ORDER: ${order.id.value.takeLast(8).uppercase()}"))
         append(EscPosCommands.textLine("Date: $date"))
         append(EscPosCommands.textLine("Server: ${order.employeeId.value.takeLast(4).uppercase()}"))
         order.tableName?.let { append(EscPosCommands.textLine("Table: $it")) }

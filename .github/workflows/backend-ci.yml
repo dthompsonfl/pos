@@ -30,6 +30,11 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
+      - name: Verify Gradle wrapper
+        run: |
+          chmod +x ./gradlew
+          ./gradlew --version
+
       - name: Build backend
         run: ./gradlew :backend:build --continue --stacktrace
 

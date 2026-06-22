@@ -41,7 +41,11 @@ class MainActivity : ComponentActivity() {
                 val currentEmployee = empState.currentEmployee
 
                 if (currentEmployee == null) {
-                    LoginScreen(onLoginSuccess = employeesVm::setCurrentEmployee)
+                    LoginScreen(
+                        onLoginSuccess = { employee ->
+                            employeesVm.setCurrentEmployee(employee)
+                        }
+                    )
                     return@PosTheme
                 }
 

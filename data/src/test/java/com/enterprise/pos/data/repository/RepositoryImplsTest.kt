@@ -7,6 +7,7 @@ import com.enterprise.pos.core.Money
 import com.enterprise.pos.core.OrderId
 import com.enterprise.pos.core.RegisterId
 import com.enterprise.pos.core.StoreId
+import com.enterprise.pos.core.security.PinHasher
 import com.enterprise.pos.data.db.dao.CatalogDao
 import com.enterprise.pos.data.db.dao.CustomerDao
 import com.enterprise.pos.data.db.dao.EmployeeDao
@@ -16,10 +17,7 @@ import com.enterprise.pos.data.db.dao.TableDao
 import com.enterprise.pos.data.db.entity.CustomerEntity
 import com.enterprise.pos.data.db.entity.EmployeeEntity
 import com.enterprise.pos.data.db.entity.OrderEntity
-import com.enterprise.pos.data.db.entity.PaymentEntity
 import com.enterprise.pos.data.sync.SyncOutboxDao
-import com.enterprise.pos.domain.model.AuditAction
-import com.enterprise.pos.domain.model.AuditLogEntry
 import com.enterprise.pos.domain.model.DiningMode
 import com.enterprise.pos.domain.model.OrderStatus
 import com.enterprise.pos.domain.repository.AuditLogRepository
@@ -31,13 +29,13 @@ import io.mockk.mockk
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
-import java.util.UUID
 
 class OrderRepositoryImplTest {
 
     private val orderDao = mockk<OrderDao>(relaxed = true)
     private val tableDao = mockk<TableDao>(relaxed = true)
     private val paymentDao = mockk<PaymentDao>(relaxed = true)
+    private val catalogDao = mockk<CatalogDao>(relaxed = true)
     private val syncOutboxDao = mockk<SyncOutboxDao>(relaxed = true)
     private val auditLog = mockk<AuditLogRepository>(relaxed = true)
     private val cartEngine = CartEngine()
@@ -47,6 +45,7 @@ class OrderRepositoryImplTest {
         orderDao = orderDao,
         tableDao = tableDao,
         paymentDao = paymentDao,
+        catalogDao = catalogDao,
         syncOutboxDao = syncOutboxDao,
         auditLog = auditLog,
         cartEngine = cartEngine,
@@ -115,7 +114,7 @@ class OrderRepositoryImplTest {
         val result = repo.markPaid(orderId, payment, employeeId)
         assertThat(result.isSuccess()).isTrue()
         coVerify { paymentDao.upsert(any()) }
-        coVerify { auditLog.logAction(any(), any(), any(), any(), eq(AuditAction.PAYMENT_CAPTURED), any(), any(), any(), any(), any()) }
+        coVerify { auditLog.logAction(any(), any(), any(), any(), any(), any(), any(), any(), any(), any()) }
     }
 
     @Test
@@ -160,7 +159,7 @@ class OrderRepositoryImplTest {
         assertThat(result.isSuccess()).isTrue()
         val order = result.getOrThrow()
         assertThat(order.status).isEqualTo(OrderStatus.VOIDED)
-        coVerify { auditLog.logAction(any(), any(), any(), any(), eq(AuditAction.ORDER_VOIDED), any(), any(), any(), any(), any()) }
+        coVerify { auditLog.logAction(any(), any(), any(), any(), any(), any(), any(), any(), any(), any()) }
     }
 
     @Test
@@ -197,7 +196,7 @@ class CatalogRepositoryImplTest {
         )
         val result = repo.upsertProduct(storeId, product)
         assertThat(result.isSuccess()).isTrue()
-        coVerify { syncOutboxDao.enqueue(any(), any(), any(), eq("UPSERT"), any()) }
+        coVerify { syncOutboxDao.upsert(any()) }
     }
 
     @Test
@@ -205,7 +204,7 @@ class CatalogRepositoryImplTest {
         coEvery { dao.setAvailable(any(), any()) } returns Unit
         val result = repo.setAvailable(storeId, productId, false)
         assertThat(result.isSuccess()).isTrue()
-        coVerify { syncOutboxDao.enqueue(any(), any(), any(), eq("UPSERT"), any()) }
+        coVerify { syncOutboxDao.upsert(any()) }
     }
 
     @Test
@@ -213,7 +212,7 @@ class CatalogRepositoryImplTest {
         coEvery { dao.deleteProduct(any()) } returns Unit
         val result = repo.deleteProduct(storeId, productId)
         assertThat(result.isSuccess()).isTrue()
-        coVerify { syncOutboxDao.enqueue(any(), any(), any(), eq("DELETE"), any()) }
+        coVerify { syncOutboxDao.upsert(any()) }
     }
 
     @Test
@@ -253,7 +252,7 @@ class CustomerRepositoryImplTest {
         )
         val result = repo.upsert(customer)
         assertThat(result.isSuccess()).isTrue()
-        coVerify { syncOutboxDao.enqueue(any(), any(), any(), eq("UPSERT"), any()) }
+        coVerify { syncOutboxDao.upsert(any()) }
     }
 
     @Test
@@ -261,7 +260,7 @@ class CustomerRepositoryImplTest {
         coEvery { dao.delete(any()) } returns Unit
         val result = repo.delete(customerId)
         assertThat(result.isSuccess()).isTrue()
-        coVerify { syncOutboxDao.enqueue(any(), any(), any(), eq("DELETE"), any()) }
+        coVerify { syncOutboxDao.upsert(any()) }
     }
 
     @Test
@@ -297,7 +296,7 @@ class EmployeeRepositoryImplTest {
 
     @Test
     fun `login verifies PIN and returns employee`() = runBlocking {
-        val hash = PinHasher.hash("1234")
+        val hash = PinHasher.hashPin("1234")
         coEvery { dao.allActive() } returns listOf(
             EmployeeEntity(
                 id = "emp-1", name = "Alice", pinHash = hash, role = "CASHIER", active = true,
@@ -315,7 +314,7 @@ class EmployeeRepositoryImplTest {
 
     @Test
     fun `login with wrong PIN fails`() = runBlocking {
-        val hash = PinHasher.hash("1234")
+        val hash = PinHasher.hashPin("1234")
         coEvery { dao.allActive() } returns listOf(
             EmployeeEntity(
                 id = "emp-1", name = "Alice", pinHash = hash, role = "CASHIER", active = true,

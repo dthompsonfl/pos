@@ -90,7 +90,7 @@ import com.enterprise.pos.data.db.entity.ZReportEntity
         TipLogEntity::class,
         SyncOutboxEntity::class
     ],
-    version = 5,
+    version = PosMigrations.LATEST_VERSION,
     exportSchema = true
 )
 abstract class PosDatabase : RoomDatabase() {

@@ -57,7 +57,7 @@ class PosMigrationsTest {
     @Test
     fun `database version matches latest migration`() {
         val latestEnd = PosMigrations.ALL.maxOf { it.endVersion }
-        assertThat(PosDatabase::class.java.getAnnotation(androidx.room.Database::class.java)?.version).isEqualTo(latestEnd)
+        assertThat(PosMigrations.LATEST_VERSION).isEqualTo(latestEnd)
     }
 
     @Test
