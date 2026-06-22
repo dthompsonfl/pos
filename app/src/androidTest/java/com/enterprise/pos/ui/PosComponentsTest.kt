@@ -20,7 +20,8 @@ import com.enterprise.pos.ui.components.PosDropdownField
 import com.enterprise.pos.ui.components.PosIconButton
 import com.enterprise.pos.ui.components.PosSearchField
 import com.enterprise.pos.ui.components.PosTextField
-import com.google.common.truth.Truth.assertThat
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -79,7 +80,7 @@ class PosButtonTest {
             )
         }
         composeRule.onNodeWithText("Click Me").performClick()
-        assertThat(clicked).isTrue()
+        assertTrue(clicked)
     }
 
     @Test
@@ -129,7 +130,7 @@ class PosButtonTest {
             )
         }
         composeRule.onNodeWithContentDescription("Add Item").performClick()
-        assertThat(clicked).isTrue()
+        assertTrue(clicked)
     }
 }
 
@@ -171,7 +172,7 @@ class PosDialogTest {
             )
         }
         composeRule.onNodeWithText("Yes").performClick()
-        assertThat(confirmed).isTrue()
+        assertTrue(confirmed)
     }
 
     @Test
@@ -188,7 +189,7 @@ class PosDialogTest {
             )
         }
         composeRule.onNodeWithText("No").performClick()
-        assertThat(dismissed).isTrue()
+        assertTrue(dismissed)
     }
 
     @Test
@@ -295,7 +296,7 @@ class PosFormTest {
         composeRule.onNodeWithText("Option 1").performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithText("Option 2").performClick()
-        assertThat(selected).isEqualTo("Option 2")
+        assertEquals("Option 2", selected)
     }
 }
 
