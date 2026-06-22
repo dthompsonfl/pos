@@ -7,6 +7,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -54,7 +56,7 @@ fun CartScreen(
     Column(modifier = Modifier.fillMaxSize().padding(12.dp)) {
         // Header
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, "Back") }
+            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
             Column(modifier = Modifier.weight(1f)) {
                 Text("Order ${order.id.value.takeLast(6).uppercase()}", style = MaterialTheme.typography.titleLarge)
                 Text(
@@ -127,7 +129,7 @@ fun CartScreen(
                 modifier = Modifier.weight(1f)
             ) {
                 if (state.isSendingToKitchen) CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                else Icon(Icons.Filled.Send, null)
+                else Icon(Icons.AutoMirrored.Filled.Send, null)
                 Spacer(Modifier.width(4.dp)); Text("Kitchen")
             }
         }

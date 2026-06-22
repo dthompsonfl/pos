@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -122,7 +123,7 @@ private fun PaymentProviderList(
                 PaymentProviderId.SHOPIFY -> Icons.Filled.ShoppingBag
                 PaymentProviderId.CASH -> Icons.Filled.AttachMoney
                 PaymentProviderId.MANUAL -> Icons.Filled.Edit
-                PaymentProviderId.EXTERNAL -> Icons.Filled.OpenInNew
+                PaymentProviderId.EXTERNAL -> Icons.AutoMirrored.Filled.OpenInNew
             }
             val label = when (p) {
                 PaymentProviderId.STRIPE -> "Stripe Terminal"

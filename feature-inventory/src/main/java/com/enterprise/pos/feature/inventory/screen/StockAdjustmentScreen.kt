@@ -5,6 +5,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.CompareArrows
+import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -59,7 +62,7 @@ fun StockAdjustmentScreen(
                 title = { Text("Stock Adjustment", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = viewModel::navigateBack) {
-                        Icon(Icons.Default.ArrowBack, "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                     }
                 }
             )
@@ -158,7 +161,7 @@ private fun AdjustmentForm(state: StockAdjustmentUiState, viewModel: StockAdjust
             isError = state.validationErrors.containsKey("quantity"),
             errorText = state.validationErrors["quantity"] ?: "",
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            leadingIcon = Icons.Default.CompareArrows
+            leadingIcon = Icons.AutoMirrored.Filled.CompareArrows
         )
 
         PosTextField(
@@ -198,7 +201,7 @@ private fun AdjustmentForm(state: StockAdjustmentUiState, viewModel: StockAdjust
             label = "Notes",
             placeholder = "Optional notes about this adjustment",
             singleLine = false,
-            leadingIcon = Icons.Default.Notes
+            leadingIcon = Icons.AutoMirrored.Filled.Notes
         )
     }
 }

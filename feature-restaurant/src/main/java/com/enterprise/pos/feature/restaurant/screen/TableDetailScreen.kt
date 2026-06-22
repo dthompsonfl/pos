@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.CallSplit
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -66,7 +68,7 @@ fun TableDetailScreen(
                 title = { Text("Table Detail", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = viewModel::navigateBack) {
-                        Icon(Icons.Default.ArrowBack, "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                     }
                 }
             )
@@ -210,7 +212,7 @@ private fun StatusActionsCard(
                     text = "Split Check",
                     onClick = viewModel::openSplitDialog,
                     modifier = Modifier.weight(1f),
-                    icon = Icons.Default.CallSplit
+                    icon = Icons.AutoMirrored.Filled.CallSplit
                 )
             }
             if (state.currentOrder != null) {

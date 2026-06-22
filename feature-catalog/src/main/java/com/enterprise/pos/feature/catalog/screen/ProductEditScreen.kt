@@ -172,7 +172,7 @@ private fun ProductEditContent(
                             onValueChange = {},
                             readOnly = true,
                             label = { Text("Category *") },
-                            modifier = Modifier.fillMaxWidth().menuAnchor(),
+                            modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true),
                             isError = state.validationErrors.containsKey("category"),
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) }
                         )
@@ -229,7 +229,7 @@ private fun ProductEditContent(
                             onValueChange = {},
                             readOnly = true,
                             label = { Text("Tax Category") },
-                            modifier = Modifier.fillMaxWidth().menuAnchor(),
+                            modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true),
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = taxExpanded) }
                         )
                         ExposedDropdownMenu(

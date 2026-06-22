@@ -36,6 +36,7 @@ class AuditLogRepositoryImpl(
     private val batchMutex = Mutex()
     private val batchSize = 100
     private val retentionDays = 90
+    private val json = Json { encodeDefaults = true; prettyPrint = true }
 
     override fun observe(storeId: StoreId, action: AuditAction?, limit: Int): Flow<List<AuditLogEntry>> =
         dao.observe(storeId.value, action?.name, limit).map { it.map { e -> e.toDomain() } }
@@ -129,8 +130,7 @@ class AuditLogRepositoryImpl(
 
     /** Export audit logs to JSON format for compliance reporting. */
     fun exportToJson(entries: List<AuditLogEntry>): String {
-        return Json { encodeDefaults = true; prettyPrint = true }
-            .encodeToString(
+        return json.encodeToString(
                 kotlinx.serialization.builtins.ListSerializer(AuditLogEntry.serializer()),
                 entries
             )

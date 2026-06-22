@@ -4,6 +4,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -61,7 +64,7 @@ fun SupplierDetailScreen(
                 title = { Text("Supplier Detail", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = viewModel::navigateBack) {
-                        Icon(Icons.Default.ArrowBack, "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                     }
                 },
                 actions = {
@@ -109,7 +112,7 @@ fun SupplierDetailScreen(
                             text = "View POs",
                             onClick = {},
                             modifier = Modifier.weight(1f),
-                            icon = Icons.Default.List
+                            icon = Icons.AutoMirrored.Filled.List
                         )
                     }
                 }
@@ -126,7 +129,7 @@ fun SupplierDetailScreen(
                         EmptyState(
                             title = "No Orders",
                             message = "No purchase orders found for this supplier.",
-                            icon = Icons.Default.ReceiptLong
+                            icon = Icons.AutoMirrored.Filled.ReceiptLong
                         )
                     }
                 } else {

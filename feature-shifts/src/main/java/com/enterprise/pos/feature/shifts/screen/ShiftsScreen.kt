@@ -8,6 +8,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Login
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -63,7 +65,7 @@ fun ShiftsScreen(
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                         ) {
-                            Icon(Icons.Filled.Logout, null); Spacer(Modifier.width(8.dp)); Text("Close Shift & Print Z-Report")
+                            Icon(Icons.AutoMirrored.Filled.Logout, null); Spacer(Modifier.width(8.dp)); Text("Close Shift & Print Z-Report")
                         }
                     }
                 }
@@ -76,7 +78,7 @@ fun ShiftsScreen(
                         Text("Open a shift to start accepting payments.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.outline)
                         Spacer(Modifier.height(16.dp))
                         Button(onClick = { viewModel.openOpenSheet() }, modifier = Modifier.fillMaxWidth()) {
-                            Icon(Icons.Filled.Login, null); Spacer(Modifier.width(8.dp)); Text("Open Shift")
+                            Icon(Icons.AutoMirrored.Filled.Login, null); Spacer(Modifier.width(8.dp)); Text("Open Shift")
                         }
                     }
                 }
