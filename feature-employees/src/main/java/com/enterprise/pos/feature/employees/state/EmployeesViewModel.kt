@@ -42,6 +42,15 @@ class EmployeesViewModel @Inject constructor(
         _state.value = _state.value.copy(pin = "", loginError = null)
     }
 
+    fun setCurrentEmployee(employee: com.enterprise.pos.domain.model.Employee) {
+        _state.value = _state.value.copy(
+            currentEmployee = employee,
+            pin = "",
+            loginError = null,
+            isLoggingIn = false
+        )
+    }
+
     fun lockRegister() {
         _state.value = _state.value.copy(
             currentEmployee = null,
