@@ -4,20 +4,12 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -28,7 +20,6 @@ import com.enterprise.pos.ui.nav.PosNavGraph
 import com.enterprise.pos.ui.nav.rememberPosNavController
 import com.enterprise.pos.ui.nav.safeNavigate
 import com.enterprise.pos.ui.onboarding.OnboardingScreen
-import com.enterprise.pos.ui.onboarding.OnboardingViewModel
 import com.enterprise.pos.ui.state.ConfigViewModel
 import com.enterprise.pos.ui.theme.PosTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -50,7 +41,7 @@ class MainActivity : ComponentActivity() {
                 val currentEmployee = empState.currentEmployee
 
                 if (currentEmployee == null) {
-                    LoginScreen(onLoginSuccess = { })
+                    LoginScreen(onLoginSuccess = employeesVm::setCurrentEmployee)
                     return@PosTheme
                 }
 
