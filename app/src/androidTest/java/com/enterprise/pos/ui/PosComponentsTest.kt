@@ -33,7 +33,7 @@ class PosButtonTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun `primary button displays text`() {
+    fun primaryButtonDisplaysText() {
         composeRule.setContent {
             PosButton(
                 text = "Submit",
@@ -45,7 +45,7 @@ class PosButtonTest {
     }
 
     @Test
-    fun `primary button is enabled by default`() {
+    fun primaryButtonIsEnabledByDefault() {
         composeRule.setContent {
             PosButton(
                 text = "Submit",
@@ -57,7 +57,7 @@ class PosButtonTest {
     }
 
     @Test
-    fun `disabled button is not enabled`() {
+    fun disabledButtonIsNotEnabled() {
         composeRule.setContent {
             PosButton(
                 text = "Submit",
@@ -70,7 +70,7 @@ class PosButtonTest {
     }
 
     @Test
-    fun `button click invokes callback`() {
+    fun buttonClickInvokesCallback() {
         var clicked = false
         composeRule.setContent {
             PosButton(
@@ -84,7 +84,7 @@ class PosButtonTest {
     }
 
     @Test
-    fun `secondary button displays text`() {
+    fun secondaryButtonDisplaysText() {
         composeRule.setContent {
             PosButton(
                 text = "Cancel",
@@ -96,7 +96,7 @@ class PosButtonTest {
     }
 
     @Test
-    fun `danger button displays text`() {
+    fun dangerButtonDisplaysText() {
         composeRule.setContent {
             PosButton(
                 text = "Delete",
@@ -108,7 +108,7 @@ class PosButtonTest {
     }
 
     @Test
-    fun `icon button displays content description`() {
+    fun iconButtonDisplaysContentDescription() {
         composeRule.setContent {
             PosIconButton(
                 icon = Icons.Default.Add,
@@ -120,7 +120,7 @@ class PosButtonTest {
     }
 
     @Test
-    fun `icon button click invokes callback`() {
+    fun iconButtonClickInvokesCallback() {
         var clicked = false
         composeRule.setContent {
             PosIconButton(
@@ -141,7 +141,7 @@ class PosDialogTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun `alert dialog shows title and message`() {
+    fun alertDialogShowsTitleAndMessage() {
         composeRule.setContent {
             PosAlertDialog(
                 title = "Confirm",
@@ -159,7 +159,7 @@ class PosDialogTest {
     }
 
     @Test
-    fun `alert dialog confirm invokes callback`() {
+    fun alertDialogConfirmInvokesCallback() {
         var confirmed = false
         composeRule.setContent {
             PosAlertDialog(
@@ -176,7 +176,7 @@ class PosDialogTest {
     }
 
     @Test
-    fun `alert dialog dismiss invokes callback`() {
+    fun alertDialogDismissInvokesCallback() {
         var dismissed = false
         composeRule.setContent {
             PosAlertDialog(
@@ -193,7 +193,7 @@ class PosDialogTest {
     }
 
     @Test
-    fun `bottom sheet shows title and content`() {
+    fun bottomSheetShowsTitleAndContent() {
         composeRule.setContent {
             PosBottomSheet(
                 title = "Options",
@@ -216,7 +216,7 @@ class PosFormTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun `text field displays label and accepts input`() {
+    fun textFieldDisplaysLabelAndAcceptsInput() {
         composeRule.setContent {
             PosTextField(
                 value = "",
@@ -228,7 +228,7 @@ class PosFormTest {
     }
 
     @Test
-    fun `text field error state shows error message`() {
+    fun textFieldErrorStateShowsErrorMessage() {
         composeRule.setContent {
             PosTextField(
                 value = "",
@@ -241,7 +241,7 @@ class PosFormTest {
     }
 
     @Test
-    fun `text field is disabled when specified`() {
+    fun textFieldIsDisabledWhenSpecified() {
         composeRule.setContent {
             PosTextField(
                 value = "Fixed",
@@ -254,7 +254,7 @@ class PosFormTest {
     }
 
     @Test
-    fun `dropdown field shows options`() {
+    fun dropdownFieldShowsOptions() {
         composeRule.setContent {
             PosDropdownField(
                 value = "Option 1",
@@ -267,7 +267,7 @@ class PosFormTest {
     }
 
     @Test
-    fun `dropdown field click opens menu`() {
+    fun dropdownFieldClickOpensMenu() {
         composeRule.setContent {
             PosDropdownField(
                 value = "Option 1",
@@ -283,7 +283,7 @@ class PosFormTest {
     }
 
     @Test
-    fun `dropdown field selection invokes callback`() {
+    fun dropdownFieldSelectionInvokesCallback() {
         var selected = ""
         composeRule.setContent {
             PosDropdownField(
@@ -307,7 +307,7 @@ class PosTableTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun `data table displays headers and rows`() {
+    fun dataTableDisplaysHeadersAndRows() {
         composeRule.setContent {
             PosDataTable(
                 headers = listOf("Name", "Price"),
@@ -336,7 +336,7 @@ class PosSearchTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun `search field displays placeholder`() {
+    fun searchFieldDisplaysPlaceholder() {
         composeRule.setContent {
             PosSearchField(
                 value = "",
@@ -348,7 +348,7 @@ class PosSearchTest {
     }
 
     @Test
-    fun `search field accepts input`() {
+    fun searchFieldAcceptsInput() {
         var query = ""
         composeRule.setContent {
             PosSearchField(

@@ -24,7 +24,7 @@ class MainActivityNavigationTest {
     val composeRule = createAndroidComposeRule<MainActivity>()
 
     @Test
-    fun `launching MainActivity shows bottom navigation`() {
+    fun launchingMainActivityShowsBottomNavigation() {
         composeRule.waitForIdle()
         composeRule.onNodeWithContentDescription("Orders").assertExists()
         composeRule.onNodeWithContentDescription("Menu").assertExists()
@@ -33,35 +33,35 @@ class MainActivityNavigationTest {
     }
 
     @Test
-    fun `clicking menu navigates to catalog screen`() {
+    fun clickingMenuNavigatesToCatalogScreen() {
         composeRule.onNodeWithContentDescription("Menu").performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithText("Categories").assertExists()
     }
 
     @Test
-    fun `clicking orders navigates to orders screen`() {
+    fun clickingOrdersNavigatesToOrdersScreen() {
         composeRule.onNodeWithContentDescription("Orders").performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithText("Open Orders").assertExists()
     }
 
     @Test
-    fun `clicking checkout navigates to checkout screen`() {
+    fun clickingCheckoutNavigatesToCheckoutScreen() {
         composeRule.onNodeWithContentDescription("Checkout").performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithText("Total").assertExists()
     }
 
     @Test
-    fun `clicking settings navigates to settings screen`() {
+    fun clickingSettingsNavigatesToSettingsScreen() {
         composeRule.onNodeWithContentDescription("Settings").performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithText("General").assertExists()
     }
 
     @Test
-    fun `back button from orders does not exit`() {
+    fun backButtonFromOrdersDoesNotExit() {
         composeRule.onNodeWithContentDescription("Orders").performClick()
         composeRule.waitForIdle()
         composeRule.activityRule.scenario.onActivity { activity ->
@@ -83,7 +83,7 @@ class CheckoutFlowTest {
     val composeRule = createAndroidComposeRule<MainActivity>()
 
     @Test
-    fun `add item to cart and proceed to payment`() {
+    fun addItemToCartAndProceedToPayment() {
         composeRule.onNodeWithContentDescription("Menu").performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithText("Beverages").performClick()
@@ -101,7 +101,7 @@ class CheckoutFlowTest {
     }
 
     @Test
-    fun `apply discount in checkout`() {
+    fun applyDiscountInCheckout() {
         composeRule.onNodeWithContentDescription("Menu").performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithText("Beverages").performClick()
@@ -119,7 +119,7 @@ class CheckoutFlowTest {
     }
 
     @Test
-    fun `split tender in checkout`() {
+    fun splitTenderInCheckout() {
         composeRule.onNodeWithContentDescription("Menu").performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithText("Beverages").performClick()
@@ -137,7 +137,7 @@ class CheckoutFlowTest {
     }
 
     @Test
-    fun `void order from checkout`() {
+    fun voidOrderFromCheckout() {
         composeRule.onNodeWithContentDescription("Menu").performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithText("Beverages").performClick()
@@ -167,7 +167,7 @@ class SettingsFlowTest {
     val composeRule = createAndroidComposeRule<MainActivity>()
 
     @Test
-    fun `open settings and change store name`() {
+    fun openSettingsAndChangeStoreName() {
         composeRule.onNodeWithContentDescription("Settings").performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithText("Store Name").performClick()
@@ -177,7 +177,7 @@ class SettingsFlowTest {
     }
 
     @Test
-    fun `open settings and navigate to hardware`() {
+    fun openSettingsAndNavigateToHardware() {
         composeRule.onNodeWithContentDescription("Settings").performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithText("Hardware").performClick()
@@ -186,7 +186,7 @@ class SettingsFlowTest {
     }
 
     @Test
-    fun `open settings and navigate to payment`() {
+    fun openSettingsAndNavigateToPayment() {
         composeRule.onNodeWithContentDescription("Settings").performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithText("Payment").performClick()
@@ -206,20 +206,20 @@ class OnboardingFlowTest {
     val composeRule = createAndroidComposeRule<MainActivity>()
 
     @Test
-    fun `onboarding welcome screen shows`() {
+    fun onboardingWelcomeScreenShows() {
         composeRule.onNodeWithText("Welcome to EnterprisePOS").assertExists()
         composeRule.onNodeWithText("Get Started").assertExists()
     }
 
     @Test
-    fun `clicking get started advances to store setup`() {
+    fun clickingGetStartedAdvancesToStoreSetup() {
         composeRule.onNodeWithText("Get Started").performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithText("Store Name").assertExists()
     }
 
     @Test
-    fun `completing store setup advances to employee setup`() {
+    fun completingStoreSetupAdvancesToEmployeeSetup() {
         composeRule.onNodeWithText("Get Started").performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithText("Store Name").performTextInput("Test Store")
@@ -229,7 +229,7 @@ class OnboardingFlowTest {
     }
 
     @Test
-    fun `completing employee setup advances to hardware setup`() {
+    fun completingEmployeeSetupAdvancesToHardwareSetup() {
         composeRule.onNodeWithText("Get Started").performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithText("Store Name").performTextInput("Test Store")

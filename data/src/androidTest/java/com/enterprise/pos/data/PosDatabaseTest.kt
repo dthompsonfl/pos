@@ -18,7 +18,7 @@ class PosDatabaseTest {
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
 
     @Test
-    fun `database creation succeeds`() {
+    fun databaseCreationSucceeds() {
         val db = Room.inMemoryDatabaseBuilder(context, PosDatabase::class.java).build()
         assertThat(db.catalogDao()).isNotNull()
         assertThat(db.orderDao()).isNotNull()
@@ -28,7 +28,7 @@ class PosDatabaseTest {
     }
 
     @Test
-    fun `migration 2 to 3 succeeds`() {
+    fun migration2to3Succeeds() {
         val helper = MigrationTestHelper(
             context,
             PosDatabase::class.java.canonicalName,
@@ -48,7 +48,7 @@ class PosDatabaseTest {
     }
 
     @Test
-    fun `migration 3 to 4 succeeds`() {
+    fun migration3to4Succeeds() {
         val helper = MigrationTestHelper(
             context,
             PosDatabase::class.java.canonicalName,
@@ -72,7 +72,7 @@ class PosDatabaseTest {
     }
 
     @Test
-    fun `migration 4 to 5 succeeds`() {
+    fun migration4to5Succeeds() {
         val helper = MigrationTestHelper(
             context,
             PosDatabase::class.java.canonicalName,
@@ -97,7 +97,7 @@ class PosDatabaseTest {
     }
 
     @Test
-    fun `concurrent access does not crash`() {
+    fun concurrentAccessDoesNotCrash() {
         val db = Room.inMemoryDatabaseBuilder(context, PosDatabase::class.java).build()
         val dao = db.orderDao()
         val jobs = (1..10).map { i ->
@@ -127,7 +127,7 @@ class RepositoryIntegrationTest {
     }
 
     @Test
-    fun `order with payment lifecycle`() = kotlinx.coroutines.runBlocking {
+    fun orderWithPaymentLifecycle() = kotlinx.coroutines.runBlocking {
         val db = createDb()
         val orderDao = db.orderDao()
         val paymentDao = db.paymentDao()
@@ -153,7 +153,7 @@ class RepositoryIntegrationTest {
     }
 
     @Test
-    fun `catalog with inventory adjustment`() = kotlinx.coroutines.runBlocking {
+    fun catalogWithInventoryAdjustment() = kotlinx.coroutines.runBlocking {
         val db = createDb()
         val catalogDao = db.catalogDao()
 
@@ -177,7 +177,7 @@ class RepositoryIntegrationTest {
     }
 
     @Test
-    fun `employee with audit log`() = kotlinx.coroutines.runBlocking {
+    fun employeeWithAuditLog() = kotlinx.coroutines.runBlocking {
         val db = createDb()
         val employeeDao = db.employeeDao()
         val auditDao = db.auditLogDao()
