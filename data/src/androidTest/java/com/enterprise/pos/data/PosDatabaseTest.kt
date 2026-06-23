@@ -7,7 +7,12 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.enterprise.pos.data.db.PosDatabase
 import com.enterprise.pos.data.db.PosMigrations
-import org.junit.Rule
+import com.enterprise.pos.data.db.entity.OrderEntity
+import com.enterprise.pos.data.db.entity.PaymentEntity
+import com.enterprise.pos.data.db.entity.ProductEntity
+import com.enterprise.pos.data.db.entity.AuditLogEntity
+import com.enterprise.pos.data.db.entity.EmployeeEntity
+import kotlinx.coroutines.launch
 import org.junit.Test
 import org.junit.runner.RunWith
 import com.google.common.truth.Truth.assertThat
@@ -30,7 +35,7 @@ class PosDatabaseTest {
     @Test
     fun migration2to3Succeeds() {
         val helper = MigrationTestHelper(
-            context,
+            InstrumentationRegistry.getInstrumentation(),
             PosDatabase::class.java.canonicalName,
             FrameworkSQLiteOpenHelperFactory()
         )
@@ -44,13 +49,12 @@ class PosDatabaseTest {
             assertThat(cursor.getInt(cursor.getColumnIndexOrThrow("taxExempt"))).isEqualTo(0)
             cursor.close()
         }
-        helper.closeWhenFinished()
     }
 
     @Test
     fun migration3to4Succeeds() {
         val helper = MigrationTestHelper(
-            context,
+            InstrumentationRegistry.getInstrumentation(),
             PosDatabase::class.java.canonicalName,
             FrameworkSQLiteOpenHelperFactory()
         )
@@ -68,13 +72,12 @@ class PosDatabaseTest {
             assertThat(tableCursor.moveToFirst()).isTrue()
             tableCursor.close()
         }
-        helper.closeWhenFinished()
     }
 
     @Test
     fun migration4to5Succeeds() {
         val helper = MigrationTestHelper(
-            context,
+            InstrumentationRegistry.getInstrumentation(),
             PosDatabase::class.java.canonicalName,
             FrameworkSQLiteOpenHelperFactory()
         )
@@ -93,21 +96,18 @@ class PosDatabaseTest {
             assertThat(employeeCursor.getInt(employeeCursor.getColumnIndexOrThrow("hourlyRateMinor"))).isEqualTo(0)
             employeeCursor.close()
         }
-        helper.closeWhenFinished()
     }
 
     @Test
     fun concurrentAccessDoesNotCrash() {
         val db = Room.inMemoryDatabaseBuilder(context, PosDatabase::class.java).build()
-        val dao = db.orderDao()
         val jobs = (1..10).map { i ->
             kotlinx.coroutines.GlobalScope.launch {
-                com.enterprise.pos.data.db.entity.OrderEntity(
+                OrderEntity(
                     id = "order-$i", storeId = "store-1", registerId = "reg-1", employeeId = "emp-1",
                     diningMode = "RETAIL", status = "OPEN", orderLevelDiscountMinor = 0, tipMinor = 0,
                     createdAt = 0, updatedAt = 0
                 )
-                // Just verify concurrent access doesn't crash
             }
         }
         kotlinx.coroutines.runBlocking {
@@ -132,16 +132,17 @@ class RepositoryIntegrationTest {
         val orderDao = db.orderDao()
         val paymentDao = db.paymentDao()
 
-        val order = com.enterprise.pos.data.db.entity.OrderEntity(
+        val order = OrderEntity(
             id = "order-1", storeId = "store-1", registerId = "reg-1", employeeId = "emp-1",
             diningMode = "RETAIL", status = "AWAITING_PAYMENT", orderLevelDiscountMinor = 0, tipMinor = 0,
             createdAt = 0, updatedAt = 0
         )
         orderDao.upsert(order)
 
-        val payment = com.enterprise.pos.data.db.entity.PaymentEntity(
+        val payment = PaymentEntity(
             id = "pay-1", orderId = "order-1", provider = "CASH", providerTransactionId = "txn-1",
-            amountMinor = 1000, currency = "USD", capturedAt = 0
+            amountMinor = 1000, currency = "USD", capturedAt = 0,
+            cardBrand = null, last4 = null, entryMode = null, receiptUrl = null
         )
         paymentDao.upsert(payment)
 
@@ -157,10 +158,11 @@ class RepositoryIntegrationTest {
         val db = createDb()
         val catalogDao = db.catalogDao()
 
-        val product = com.enterprise.pos.data.db.entity.ProductEntity(
+        val product = ProductEntity(
             id = "prod-1", name = "Burger", description = "", categoryId = "cat-1",
             type = "PHYSICAL", taxCategory = "STANDARD", ageRestriction = "NONE",
-            isAvailable = true, trackInventory = true, prepTimeMinutes = 0, updatedAt = 0
+            isAvailable = true, trackInventory = true, prepTimeMinutes = 0, updatedAt = 0,
+            imageUrl = null, defaultVariantId = null, tags = "", kitchenRoutingKey = null
         )
         catalogDao.upsertProduct(product)
 
@@ -182,16 +184,17 @@ class RepositoryIntegrationTest {
         val employeeDao = db.employeeDao()
         val auditDao = db.auditLogDao()
 
-        val employee = com.enterprise.pos.data.db.entity.EmployeeEntity(
+        val employee = EmployeeEntity(
             id = "emp-1", name = "Alice", pinHash = "hash", role = "CASHIER", active = true,
             email = null, phone = null, createdAt = 0
         )
         employeeDao.upsert(employee)
 
-        val entry = com.enterprise.pos.data.db.entity.AuditLogEntity(
+        val entry = AuditLogEntity(
             id = "audit-1", storeId = "store-1", registerId = null, employeeId = "emp-1",
             employeeName = "Alice", action = "EMPLOYEE_LOGIN", entityType = "Employee",
-            entityId = "emp-1", timestamp = 0
+            entityId = "emp-1", timestamp = 0,
+            beforeJson = null, afterJson = null, reason = null, ipAddress = null, deviceIdentifier = null
         )
         auditDao.insert(entry)
 

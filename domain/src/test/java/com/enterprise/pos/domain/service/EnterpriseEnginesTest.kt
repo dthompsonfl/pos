@@ -89,7 +89,7 @@ class PromotionEngineTest {
             promotion(PromotionType.PERCENT_OFF, percent = 10)
         ))
         val o = order(line(100.0))
-        val discount = engine.computeDiscount(engine.applicable(o, now, zone).first(), o)
+        val discount = engine.computeDiscount(engine.applicable(o, now).first(), o)
         assertThat(discount.minorUnits).isEqualTo(1000L) // 10% of 100 = 10
     }
 
@@ -99,7 +99,7 @@ class PromotionEngineTest {
             promotion(PromotionType.FIXED_OFF, value = Money.of(15.00))
         ))
         val o = order(line(100.0))
-        val discount = engine.computeDiscount(engine.applicable(o, now, zone).first(), o)
+        val discount = engine.computeDiscount(engine.applicable(o, now).first(), o)
         assertThat(discount.minorUnits).isEqualTo(1500L)
     }
 
@@ -109,7 +109,7 @@ class PromotionEngineTest {
             promotion(PromotionType.FIXED_OFF, value = Money.of(150.00))
         ))
         val o = order(line(100.0))
-        val discount = engine.computeDiscount(engine.applicable(o, now, zone).first(), o)
+        val discount = engine.computeDiscount(engine.applicable(o, now).first(), o)
         assertThat(discount.minorUnits).isEqualTo(10000L) // capped at 100
     }
 
@@ -119,7 +119,7 @@ class PromotionEngineTest {
             promotion(PromotionType.BUY_X_GET_Y, buyQty = 2, getQty = 1)
         ))
         val o = order(line(10.0, qty = 4))
-        val discount = engine.computeDiscount(engine.applicable(o, now, zone).first(), o)
+        val discount = engine.computeDiscount(engine.applicable(o, now).first(), o)
         // 4 items, buy 2 get 1 free = 2 free items (10 * 2 = 20)
         assertThat(discount.minorUnits).isEqualTo(2000L)
     }
@@ -130,7 +130,7 @@ class PromotionEngineTest {
             promotion(PromotionType.FREE_ITEM)
         ))
         val o = order(line(10.0), line(5.0))
-        val discount = engine.computeDiscount(engine.applicable(o, now, zone).first(), o)
+        val discount = engine.computeDiscount(engine.applicable(o, now).first(), o)
         // cheapest item is free
         assertThat(discount.minorUnits).isEqualTo(500L)
     }
@@ -141,7 +141,7 @@ class PromotionEngineTest {
             promotion(PromotionType.HAPPY_HOUR, percent = 50)
         ))
         val o = order(line(20.0))
-        val discount = engine.computeDiscount(engine.applicable(o, now, zone).first(), o)
+        val discount = engine.computeDiscount(engine.applicable(o, now).first(), o)
         assertThat(discount.minorUnits).isEqualTo(1000L)
     }
 
@@ -151,7 +151,7 @@ class PromotionEngineTest {
             promotion(PromotionType.COMBO, percent = 20)
         ))
         val o = order(line(50.0))
-        val discount = engine.computeDiscount(engine.applicable(o, now, zone).first(), o)
+        val discount = engine.computeDiscount(engine.applicable(o, now).first(), o)
         assertThat(discount.minorUnits).isEqualTo(1000L)
     }
 
@@ -161,7 +161,7 @@ class PromotionEngineTest {
             promotion(PromotionType.LOYALTY_REWARD, value = Money.of(5.00))
         ))
         val o = order(line(100.0))
-        val discount = engine.computeDiscount(engine.applicable(o, now, zone).first(), o)
+        val discount = engine.computeDiscount(engine.applicable(o, now).first(), o)
         assertThat(discount.minorUnits).isEqualTo(500L)
     }
 
@@ -176,7 +176,7 @@ class PromotionEngineTest {
             )
         ))
         val o = order(line(100.0))
-        val applicable = engine.applicable(o, now, zone) // now is 12:00
+        val applicable = engine.applicable(o, now) // now is 12:00
         assertThat(applicable).isEmpty()
     }
 
@@ -191,7 +191,7 @@ class PromotionEngineTest {
             )
         ))
         val o = order(line(100.0))
-        val applicable = engine.applicable(o, now, zone)
+        val applicable = engine.applicable(o, now)
         assertThat(applicable).hasSize(1)
     }
 
@@ -205,7 +205,7 @@ class PromotionEngineTest {
             )
         ))
         val o = order(line(100.0))
-        val applicable = engine.applicable(o, now, zone)
+        val applicable = engine.applicable(o, now)
         assertThat(applicable).hasSize(1)
     }
 
@@ -219,7 +219,7 @@ class PromotionEngineTest {
             )
         ))
         val o = order(line(100.0))
-        val applicable = engine.applicable(o, now, zone)
+        val applicable = engine.applicable(o, now)
         assertThat(applicable).isEmpty()
     }
 
@@ -234,7 +234,7 @@ class PromotionEngineTest {
             )
         ))
         val o = order(line(50.0, productId = "prod-1"), line(50.0, productId = "prod-2"))
-        val discount = engine.computeDiscount(engine.applicable(o, now, zone).first(), o)
+        val discount = engine.computeDiscount(engine.applicable(o, now).first(), o)
         assertThat(discount.minorUnits).isEqualTo(500L) // only prod-1
     }
 
@@ -249,7 +249,7 @@ class PromotionEngineTest {
             )
         ))
         val o = order(line(50.0, categoryId = "cat-1"), line(50.0, categoryId = "cat-2"))
-        val discount = engine.computeDiscount(engine.applicable(o, now, zone).first(), o)
+        val discount = engine.computeDiscount(engine.applicable(o, now).first(), o)
         assertThat(discount.minorUnits).isEqualTo(500L)
     }
 
@@ -259,7 +259,7 @@ class PromotionEngineTest {
             promotion(PromotionType.PERCENT_OFF, percent = 10, active = false)
         ))
         val o = order(line(100.0))
-        val applicable = engine.applicable(o, now, zone)
+        val applicable = engine.applicable(o, now)
         assertThat(applicable).isEmpty()
     }
 
@@ -270,7 +270,7 @@ class PromotionEngineTest {
             promotion(PromotionType.PERCENT_OFF, percent = 20, priority = 2)
         ))
         val o = order(line(100.0))
-        val (best, discount) = engine.applyBest(o, now, zone).getOrThrow()
+        val (best, discount) = engine.applyBest(o, now).getOrThrow()
         assertThat(best).isNotNull()
         assertThat(discount.minorUnits).isEqualTo(2000L)
     }
@@ -282,7 +282,7 @@ class PromotionEngineTest {
             promotion(PromotionType.PERCENT_OFF, percent = 20, requiresCode = true, code = "SAVE20")
         ))
         val o = order(line(100.0))
-        val (best, discount) = engine.applyBest(o, now, zone, code = "SAVE20").getOrThrow()
+        val (best, discount) = engine.applyBest(o, now, code = "SAVE20").getOrThrow()
         assertThat(best).isNotNull()
         assertThat(discount.minorUnits).isEqualTo(2000L)
     }
@@ -291,7 +291,7 @@ class PromotionEngineTest {
     fun `applyBest returns zero when no promotions`() {
         val engine = PromotionEngine(emptyList())
         val o = order(line(100.0))
-        val (best, discount) = engine.applyBest(o, now, zone).getOrThrow()
+        val (best, discount) = engine.applyBest(o, now).getOrThrow()
         assertThat(best).isNull()
         assertThat(discount.isZero()).isTrue()
     }
@@ -302,7 +302,7 @@ class PromotionEngineTest {
         val high = promotion(PromotionType.PERCENT_OFF, percent = 20, priority = 2)
         val engine = PromotionEngine(listOf(low, high))
         val o = order(line(100.0))
-        val applicable = engine.applicable(o, now, zone)
+        val applicable = engine.applicable(o, now)
         assertThat(applicable[0].priority).isEqualTo(2)
         assertThat(applicable[1].priority).isEqualTo(1)
     }
@@ -313,7 +313,7 @@ class PromotionEngineTest {
             promotion(PromotionType.PERCENT_OFF, percent = 10, scope = PromotionScope.CHEAPEST_ITEM)
         ))
         val o = order(line(100.0), line(50.0))
-        val discount = engine.computeDiscount(engine.applicable(o, now, zone).first(), o)
+        val discount = engine.computeDiscount(engine.applicable(o, now).first(), o)
         // 10% of cheapest item (50) = 5
         assertThat(discount.minorUnits).isEqualTo(500L)
     }
@@ -324,7 +324,7 @@ class PromotionEngineTest {
             promotion(PromotionType.PERCENT_OFF, percent = 10, scope = PromotionScope.ALL_ITEMS)
         ))
         val o = order(line(100.0), line(50.0))
-        val discount = engine.computeDiscount(engine.applicable(o, now, zone).first(), o)
+        val discount = engine.computeDiscount(engine.applicable(o, now).first(), o)
         assertThat(discount.minorUnits).isEqualTo(1500L) // 10% of 150
     }
 }

@@ -46,8 +46,8 @@ class PromotionEngine(
     }
 
     /** Apply the best applicable promotion (or stack if allowed by future extension). */
-    fun applyBest(order: Order, now: Long = System.currentTimeMillis(), code: String? = null): Result<Pair<Promotion?, Money>> = Result.catching {
-        val eligible = applicable(order, now)
+    fun applyBest(order: Order, now: Long = System.currentTimeMillis(), zone: ZoneId = ZoneId.systemDefault(), code: String? = null): Result<Pair<Promotion?, Money>> = Result.catching {
+        val eligible = applicable(order, now, zone)
         if (eligible.isEmpty()) return@catching null to Money.ZERO
 
         val byCode = code?.let { c -> eligible.firstOrNull { it.requiresCode && it.code == c } }

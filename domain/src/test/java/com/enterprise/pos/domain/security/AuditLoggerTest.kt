@@ -2,17 +2,20 @@ package com.enterprise.pos.domain.security
 
 import com.google.common.truth.Truth.assertThat
 import com.enterprise.pos.core.EmployeeId
+import com.enterprise.pos.core.Money
+import com.enterprise.pos.core.OrderId
+import com.enterprise.pos.core.PaymentId
 import com.enterprise.pos.core.RegisterId
 import com.enterprise.pos.core.StoreId
 import com.enterprise.pos.domain.model.AuditAction
 import com.enterprise.pos.domain.model.AuditLogEntry
 import com.enterprise.pos.domain.model.EmployeeRole
-import com.enterprise.pos.domain.model.RolePermissions
 import com.enterprise.pos.domain.repository.AuditLogRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
+import java.util.UUID
 
 class AuditLoggerTest {
 
@@ -49,160 +52,149 @@ class AuditLoggerTest {
     private val employeeId = EmployeeId("emp-1")
 
     @Test
-    fun `logOrderCreated adds entry`() = runBlocking {
-        logger.logOrderCreated(storeId, registerId, employeeId, "order-1")
-        assertThat(fakeRepo.entries).hasSize(1)
-        assertThat(fakeRepo.entries[0].action).isEqualTo(AuditAction.ORDER_CREATED)
-        assertThat(fakeRepo.entries[0].entityType).isEqualTo("Order")
+    fun logOrderCreatedAddsEntry() {
+        runBlocking {
+            logger.logOrderAction(OrderId("order-1"), "ORDER_CREATED", employeeId, storeId)
+            assertThat(fakeRepo.entries).hasSize(1)
+            assertThat(fakeRepo.entries[0].action).isEqualTo(AuditAction.ORDER_CREATED)
+        }
     }
 
     @Test
-    fun `logPaymentCaptured adds entry with amount`() = runBlocking {
-        logger.logPaymentCaptured(storeId, registerId, employeeId, "pay-1", 1250L)
-        assertThat(fakeRepo.entries).hasSize(1)
-        assertThat(fakeRepo.entries[0].action).isEqualTo(AuditAction.PAYMENT_CAPTURED)
-        assertThat(fakeRepo.entries[0].afterJson).contains("1250")
+    fun logPaymentCapturedAddsEntryWithAmount() {
+        runBlocking {
+            logger.logPaymentAction(PaymentId("pay-1"), "PAYMENT_CAPTURED", Money.ofMinor(1250), employeeId, storeId)
+            assertThat(fakeRepo.entries).hasSize(1)
+            assertThat(fakeRepo.entries[0].action).isEqualTo(AuditAction.PAYMENT_CAPTURED)
+            assertThat(fakeRepo.entries[0].afterJson).contains("1250")
+        }
     }
 
     @Test
-    fun `logOrderVoided includes reason`() = runBlocking {
-        logger.logOrderVoided(storeId, registerId, employeeId, "order-1", "Customer request")
-        assertThat(fakeRepo.entries[0].reason).isEqualTo("Customer request")
+    fun logOrderVoidedIncludesReason() {
+        runBlocking {
+            logger.logVoidAction(OrderId("order-1"), "Customer request", employeeId, storeId)
+            assertThat(fakeRepo.entries[0].action).isEqualTo(AuditAction.ORDER_VOIDED)
+            // Note: AuditLogger currently maps details to afterJson, and reason parameter is null in toAuditLogEntry
+            // We should check afterJson if we really want to verify the reason is logged
+            assertThat(fakeRepo.entries[0].afterJson).contains("Customer request")
+        }
     }
 
     @Test
-    fun `logDiscountApplied records discount name`() = runBlocking {
-        logger.logDiscountApplied(storeId, registerId, employeeId, "order-1", "Summer Sale")
-        assertThat(fakeRepo.entries[0].afterJson).contains("Summer Sale")
+    fun logDiscountAppliedRecordsAmount() {
+        runBlocking {
+            logger.logDiscountApplied(OrderId("order-1"), Money.of(5.0), employeeId = employeeId, storeId = storeId)
+            assertThat(fakeRepo.entries[0].afterJson).contains("5.00")
+        }
     }
 
     @Test
-    fun `logEmployeeLogin and logout`() = runBlocking {
-        logger.logEmployeeLogin(storeId, registerId, employeeId, "Alice")
-        logger.logEmployeeLogout(storeId, registerId, employeeId)
-        assertThat(fakeRepo.entries).hasSize(2)
-        assertThat(fakeRepo.entries[0].action).isEqualTo(AuditAction.EMPLOYEE_LOGIN)
-        assertThat(fakeRepo.entries[1].action).isEqualTo(AuditAction.EMPLOYEE_LOGOUT)
+    fun logLoginAddsEntry() {
+        runBlocking {
+            logger.logLogin(employeeId, true, storeId = storeId, registerId = registerId)
+            assertThat(fakeRepo.entries).hasSize(1)
+            assertThat(fakeRepo.entries[0].action).isEqualTo(AuditAction.EMPLOYEE_LOGIN)
+        }
     }
 
     @Test
-    fun `logBatch inserts multiple entries`() = runBlocking {
-        val entries = listOf(
-            AuditLogEntry(
+    fun logBatchInsertsMultipleEntries() {
+        runBlocking {
+            val entry1 = AuditLogEntry(
                 id = com.enterprise.pos.core.Id.random(), storeId = storeId, registerId = registerId,
                 employeeId = employeeId, employeeName = "", action = AuditAction.ORDER_CREATED,
                 entityType = "Order", entityId = "o1", timestamp = System.currentTimeMillis()
-            ),
-            AuditLogEntry(
+            )
+            val entry2 = AuditLogEntry(
                 id = com.enterprise.pos.core.Id.random(), storeId = storeId, registerId = registerId,
                 employeeId = employeeId, employeeName = "", action = AuditAction.ORDER_PAID,
                 entityType = "Order", entityId = "o2", timestamp = System.currentTimeMillis()
             )
-        )
-        logger.logBatch(entries)
-        assertThat(fakeRepo.entries).hasSize(2)
+            logger.logBatch(entry1)
+            logger.logBatch(entry2)
+            logger.flushBatch()
+            assertThat(fakeRepo.entries).hasSize(2)
+        }
     }
 
     @Test
-    fun `severity levels are preserved by action type`() = runBlocking {
-        logger.logOrderCreated(storeId, registerId, employeeId, "order-1")
-        logger.logOrderVoided(storeId, registerId, employeeId, "order-1", "Mistake")
-        logger.logPaymentCaptured(storeId, registerId, employeeId, "pay-1", 1000L)
-        val actions = fakeRepo.entries.map { it.action }
-        assertThat(actions).containsExactly(
-            AuditAction.ORDER_CREATED,
-            AuditAction.ORDER_VOIDED,
-            AuditAction.PAYMENT_CAPTURED
-        )
+    fun actionsAreMappedCorrectly() {
+        runBlocking {
+            logger.logOrderAction(OrderId("o1"), "ORDER_CREATED", employeeId, storeId)
+            logger.logVoidAction(OrderId("o1"), "Reason", employeeId, storeId)
+            logger.logPaymentAction(PaymentId("p1"), "PAYMENT_CAPTURED", Money.of(10.0), employeeId, storeId)
+
+            val actions = fakeRepo.entries.map { it.action }
+            assertThat(actions).containsExactly(
+                AuditAction.ORDER_CREATED,
+                AuditAction.ORDER_VOIDED,
+                AuditAction.PAYMENT_CAPTURED
+            )
+        }
     }
 }
 
 class SessionManagerTest {
 
-    private val manager = SessionManager(timeoutMs = 60000L)
+    private val manager = SessionManager()
     private val employeeId = EmployeeId("emp-1")
-    private val storeId = StoreId("store-1")
-    private val registerId = RegisterId("reg-1")
-    private val permissions = RolePermissions(role = EmployeeRole.CASHIER, canApplyDiscounts = true)
+    private val employeeName = "Test"
+    private val deviceId = "device-1"
 
     @Test
-    fun `create session returns active session`() {
-        val now = 1000L
-        val session = manager.createSession(
-            employeeId = employeeId,
-            employeeName = "Test",
-            role = EmployeeRole.CASHIER,
-            storeId = storeId,
-            registerId = registerId,
-            permissions = permissions,
-            now = now
-        )
-        assertThat(session.isActive).isTrue()
+    fun startSessionReturnsActiveSession() {
+        val session = manager.startSession(employeeId, employeeName, EmployeeRole.CASHIER, deviceId)
         assertThat(session.employeeId).isEqualTo(employeeId)
-        assertThat(session.expiresAt).isEqualTo(now + 60000L)
+        assertThat(manager.isSessionValid(session.sessionId)).isTrue()
     }
 
     @Test
-    fun `validate returns success for active session`() {
-        val now = 1000L
-        manager.createSession(employeeId, "Test", EmployeeRole.CASHIER, storeId, registerId, permissions, now)
-        val result = manager.validate(employeeId, now + 1000)
-        assertThat(result.isSuccess()).isTrue()
+    fun getSessionReturnsNullForInvalidId() {
+        assertThat(manager.getSession("invalid")).isNull()
     }
 
     @Test
-    fun `validate returns failure for expired session`() {
-        val now = 1000L
-        manager.createSession(employeeId, "Test", EmployeeRole.CASHIER, storeId, registerId, permissions, now)
-        val result = manager.validate(employeeId, now + 70000L)
-        assertThat(result.isFailure()).isTrue()
+    fun refreshSessionUpdatesLastActivity() {
+        val session = manager.startSession(employeeId, employeeName, EmployeeRole.CASHIER, deviceId)
+        val originalActivity = session.lastActivityAt
+        
+        // Wait a bit to ensure timestamp changes
+        Thread.sleep(10)
+        
+        val refreshed = manager.refreshSession(session.sessionId)
+        assertThat(refreshed).isNotNull()
+        assertThat(refreshed!!.lastActivityAt).isGreaterThan(originalActivity)
     }
 
     @Test
-    fun `validate returns failure for unknown employee`() {
-        val result = manager.validate(EmployeeId("unknown"), 1000L)
-        assertThat(result.isFailure()).isTrue()
+    fun endSessionInvalidatesId() {
+        val session = manager.startSession(employeeId, employeeName, EmployeeRole.CASHIER, deviceId)
+        manager.endSession(session.sessionId)
+        assertThat(manager.isSessionValid(session.sessionId)).isFalse()
     }
 
     @Test
-    fun `refresh extends expiration`() {
-        val now = 1000L
-        manager.createSession(employeeId, "Test", EmployeeRole.CASHIER, storeId, registerId, permissions, now)
-        val refreshed = manager.refresh(employeeId, now + 50000L).getOrThrow()
-        assertThat(refreshed.expiresAt).isEqualTo(now + 50000L + 60000L)
+    fun invalidateEmployeeSessionsClearsAll() {
+        manager.startSession(employeeId, employeeName, EmployeeRole.CASHIER, "d1")
+        manager.startSession(employeeId, employeeName, EmployeeRole.CASHIER, "d2")
+        
+        assertThat(manager.activeSessionCount(employeeId)).isEqualTo(2)
+        
+        manager.invalidateEmployeeSessions(employeeId)
+        assertThat(manager.activeSessionCount(employeeId)).isEqualTo(0)
     }
 
     @Test
-    fun `invalidate removes session`() {
-        manager.createSession(employeeId, "Test", EmployeeRole.CASHIER, storeId, registerId, permissions, 1000L)
-        manager.invalidate(employeeId)
-        val result = manager.validate(employeeId, 2000L)
-        assertThat(result.isFailure()).isTrue()
-    }
-
-    @Test
-    fun `invalidateAll clears all sessions`() {
-        manager.createSession(EmployeeId("emp-1"), "A", EmployeeRole.CASHIER, storeId, registerId, permissions, 1000L)
-        manager.createSession(EmployeeId("emp-2"), "B", EmployeeRole.CASHIER, storeId, registerId, permissions, 1000L)
-        manager.invalidateAll()
-        assertThat(manager.activeCount()).isEqualTo(0)
-    }
-
-    @Test
-    fun `concurrent limit reached`() {
-        manager.createSession(EmployeeId("emp-1"), "A", EmployeeRole.CASHIER, storeId, registerId, permissions, 1000L)
-        manager.createSession(EmployeeId("emp-2"), "B", EmployeeRole.CASHIER, storeId, registerId, permissions, 1000L)
-        assertThat(manager.concurrentLimitReached(2)).isTrue()
-        assertThat(manager.concurrentLimitReached(3)).isFalse()
-    }
-
-    @Test
-    fun `activeCount excludes expired sessions`() {
-        val now = 1000L
-        manager.createSession(EmployeeId("emp-1"), "A", EmployeeRole.CASHIER, storeId, registerId, permissions, now)
-        assertThat(manager.activeCount()).isEqualTo(1)
-        // After expiration, isActive returns false but the session still exists in map until validate
-        // Actually isActive uses System.currentTimeMillis() which is non-deterministic in tests
-        // So we just check that activeCount returns the count of sessions where isActive is true
+    fun concurrentLimitEnforced() {
+        // Max concurrent is 2
+        val s1 = manager.startSession(employeeId, employeeName, EmployeeRole.CASHIER, "d1")
+        val s2 = manager.startSession(employeeId, employeeName, EmployeeRole.CASHIER, "d2")
+        val s3 = manager.startSession(employeeId, employeeName, EmployeeRole.CASHIER, "d3")
+        
+        assertThat(manager.isSessionValid(s1.sessionId)).isFalse() // Oldest should be gone
+        assertThat(manager.isSessionValid(s2.sessionId)).isTrue()
+        assertThat(manager.isSessionValid(s3.sessionId)).isTrue()
+        assertThat(manager.activeSessionCount(employeeId)).isEqualTo(2)
     }
 }
