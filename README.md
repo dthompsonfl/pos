@@ -1,5 +1,11 @@
 # Enterprise POS Android
 
+**Business use case:** Restaurant and retail teams need reliable ordering, checkout, kitchen handoffs, shifts and a way to recover when a device is offline or a payment result is uncertain. This Android/Kotlin prototype explores those workflows from a frontline operator's perspective.
+
+**Inspect the implementation:** [Persisted synchronization worker](data/src/main/java/com/enterprise/pos/data/sync/SyncEngine.kt) · [Payment-provider routing contract](payment-api/src/main/java/com/enterprise/pos/payment/router/PaymentRouter.kt) · [Checkout state](feature-sales/src/main/java/com/enterprise/pos/feature/sales/state/CheckoutViewModel.kt).
+
+**Maturity and authorship:** Project-based, AI-assisted development under my requirements and review. The public source shows implementation direction and current code; it does **not** mean I wrote every line manually, that hardware and real payment providers were validated, or that the system is production-certified. The status and fail-closed limitations below control those claims.
+
 Enterprise POS is a multi-module Android/Kotlin point-of-sale application prototype for restaurant and retail workflows. It includes Compose UI modules, Room persistence, domain services, payment-provider abstractions, hardware abstractions, a Ktor backend module, and CI wiring.
 
 This repository is **not yet production-ready**. The current main branch is being hardened toward production, but several workflows still require real backend persistence, provider credentials, physical hardware, migration workers, and full validation before merchant deployment.
