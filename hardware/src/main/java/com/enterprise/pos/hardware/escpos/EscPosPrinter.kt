@@ -7,8 +7,12 @@ import com.enterprise.pos.hardware.printer.PrinterInfo
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.util.UUID
+import android.Manifest
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothSocket
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 
 /**
  * Abstraction over an ESC/POS thermal printer transport.
@@ -85,7 +89,8 @@ class UsbEscPosPrinter(
  */
 class BluetoothEscPosPrinter(
     private val bluetoothAdapter: BluetoothAdapter,
-    private val macAddress: String
+    private val macAddress: String,
+    private val context: Context
 ) : EscPosPrinter {
 
     override val info: PrinterInfo = PrinterInfo(
@@ -104,10 +109,24 @@ class BluetoothEscPosPrinter(
 
     override suspend fun connect(): Result<Unit> = Result.catching {
         require(macAddress.isNotBlank()) { "Bluetooth MAC address is required" }
+        // Android 12+ requires an actual runtime grant, not just the manifest entry.
+        // Do not open RFCOMM unless the caller has obtained BLUETOOTH_CONNECT.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            context.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED
+        ) {
+            throw SecurityException("Bluetooth printer connection requires BLUETOOTH_CONNECT permission")
+        }
         val device = bluetoothAdapter.getRemoteDevice(macAddress)
         val sppUuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
-        socket = device.createRfcommSocketToServiceRecord(sppUuid)
-        socket?.connect()
+        val nextSocket = device.createRfcommSocketToServiceRecord(sppUuid)
+        try {
+            nextSocket.connect()
+            socket?.close()
+            socket = nextSocket
+        } catch (error: Exception) {
+            nextSocket.close()
+            throw error
+        }
     }
 
     override suspend fun disconnect(): Result<Unit> = Result.catching {
